@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.log
+*.bak-*
+*.exe
+*.scr
+*.zip
+AGENTS.md
+HANDOFF.md
+.agents/
+.codex/
+.claude-office/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,21 @@
+{
+  "name": "claude-office",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Virtual office: a pixel office that comes alive while Claude Code, Codex, claude.ai and ChatGPT work",
+  "scripts": {
+    "start": "node server.js",
+    "hooks:install": "node install.js",
+    "hooks:uninstall": "node install.js --uninstall",
+    "skill:install": "node install-skill.js",
+    "skill:uninstall": "node install-skill.js --uninstall",
+    "codex:install": "node install-codex.js",
+    "codex:uninstall": "node install-codex.js --uninstall",
+    "icon": "node app/make-icon.js",
+    "saver:build": "node app/build-screensaver.js",
+    "app:install": "node app/install-shortcut.js",
+    "app:startup": "node app/install-shortcut.js --startup",
+    "app:uninstall": "node app/install-shortcut.js --uninstall",
+    "installer:build": "node app/build-installer.js"
+  }
+}

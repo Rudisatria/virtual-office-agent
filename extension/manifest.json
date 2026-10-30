@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Virtual Office for claude.ai and ChatGPT",
+  "version": "1.10.0",
+  "action": { "default_title": "Virtual Office: waiting for your first prompt" },
+  "description": "Shows your claude.ai and ChatGPT chats in your local Virtual Office (http://localhost:4321).",
+  "permissions": ["scripting", "alarms"],
+  "host_permissions": ["http://127.0.0.1:4321/*", "https://claude.ai/*", "https://chatgpt.com/*", "https://chat.openai.com/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["https://claude.ai/*", "https://chatgpt.com/*", "https://chat.openai.com/*"], "js": ["content.js"], "run_at": "document_idle" }
+  ]
+}
