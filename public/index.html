@@ -436,6 +436,12 @@ function paintPerson(G, p, pose){
       arm(9, shY, 7, 45 + oy, 15, 48 + oy, C);
       arm(33, shY, 36, 43 + oy, 26, 29 + oy - upR, c);
       if (!back) { ell(15, 48 + oy, 2.6, 2.4, Sk); ell(26, 29 + oy - upR, 2.6, 2.4, Sk); }
+    } else if (pose.act === 'smoke') {
+      // One arm hangs down; the other holds a cigarette at the chest (arms 1) or lifts it to the mouth (arms 0)
+      const hx = pose.arms ? 28 : 26, hy = (pose.arms ? 43 : 29) + oy;
+      arm(9, shY, 8, 45 + oy, 9, 50 + oy, C);
+      arm(33, shY, 36, 44 + oy, hx, hy, c);
+      if (!back) { ell(9, 51 + oy, 2.6, 2.6, Sk); ell(hx, hy, 2.6, 2.4, Sk); rect(hx + 2, hy - 2, hx + 6, hy - 1, '#f4f1ea'); rect(hx + 7, hy - 2, hx + 7, hy - 1, '#ff7a3a'); }
     } else if (pose.act === 'game') {
       arm(9, shY, 7, 47 + oy, 18, 48 + oy - upL, C);
       arm(33, shY, 35, 47 + oy, 25, 48 + oy - upR, c);
@@ -555,7 +561,7 @@ const ACC = {
 };
 const spriteCache = new Map();
 function sprite(p, face, walk, seated, arms, sleep, turn){
-  const act = seated ? p.act : null;
+  const act = seated || arms >= 0 ? p.act : null;   // standing at a spot (foosball, smoking) still shows what the hands do
   const key = `${p.id}|${face}|${walk}|${seated}|${arms}|${sleep}|${turn}|${act}`;
   let c = spriteCache.get(key);
   if (!c) {
@@ -721,26 +727,33 @@ function resetDeliverables(){ delCount = 0; doneCards = []; delEl.innerHTML = '<
 // The lounge is upstairs. Every route starts at HUB, on the landing at the top of the stairs, and ends in front of the
 // seat. z is the seat height above the mezzanine floor.
 const HUB = {x:14.6, y:2.0, z:FLOOR2, hub:true};
-const H_ = [HUB.x, HUB.y], UP_IN = [12.8, 2.6], UP_MID = [7.4, 2.6], UP_ARM = [2.5, 1.6];   // the walkway from the landing along the mezzanine
-const LDX = -.6;   // the TV, sofa and bean bags are drawn at their own spot and moved along the back wall by LDX
+// The walkway from the landing along the mezzanine. UP_ARM is the aisle between the smoking room's glass and the sofa,
+// down to the arm (ARM_IN) and into the smoking room's door (SMOKE_IN).
+const H_ = [HUB.x, HUB.y], UP_IN = [12.8, 2.6], UP_MID = [7.4, 2.6], UP_ARM = [3.3, 1.6], ARM_IN = [3.3, 5.4], SMOKE_IN = [2.2, 1.6];
+const LDX = .3;   // the TV, sofa and bean bags are drawn at their own spot and moved along the back wall by LDX
 const SPOTS = [
-  {act:'tv',   x:3.9,  y:4.0,  z:4.5, face:'up', route:[H_,UP_IN,UP_MID,[7.4,3.2],[3.9,3.2]]},
-  {act:'tv',   x:4.9,  y:4.0,  z:4.5, face:'up', route:[H_,UP_IN,UP_MID,[7.4,3.2],[4.9,3.2]]},
-  {act:'tv',   x:5.9,  y:4.0,  z:4.5, face:'up', route:[H_,UP_IN,UP_MID,[7.4,3.2],[5.9,3.2]]},
-  {act:'game', x:4.3,  y:2.55, z:3.3, face:'up', route:[H_,UP_IN,UP_MID,[7.4,1.6],[4.3,1.6]]},
-  {act:'game', x:5.6,  y:2.55, z:3.3, face:'up', route:[H_,UP_IN,UP_MID,[7.4,1.6],[5.6,1.6]]},
+  {act:'tv',   x:4.5 + LDX, y:4.0,  z:4.5, face:'up', route:[H_,UP_IN,UP_MID,[7.4,3.2],[4.5 + LDX,3.2]]},
+  {act:'tv',   x:5.5 + LDX, y:4.0,  z:4.5, face:'up', route:[H_,UP_IN,UP_MID,[7.4,3.2],[5.5 + LDX,3.2]]},
+  {act:'tv',   x:6.5 + LDX, y:4.0,  z:4.5, face:'up', route:[H_,UP_IN,UP_MID,[7.4,3.2],[6.5 + LDX,3.2]]},
+  {act:'game', x:4.9 + LDX, y:2.55, z:3.3, face:'up', route:[H_,UP_IN,UP_MID,[7.4,1.6],[4.9 + LDX,1.6]]},
+  {act:'game', x:6.2 + LDX, y:2.55, z:3.3, face:'up', route:[H_,UP_IN,UP_MID,[7.4,1.6],[6.2 + LDX,1.6]]},
   // stools at the coffee counter
   {act:'eat',  x:9.5,  y:1.55, z:4.7, face:'up', route:[H_,UP_IN,[9.5,2.6]]},
   {act:'eat',  x:10.6, y:1.55, z:4.7, face:'up', route:[H_,UP_IN,[10.6,2.6]]},
   {act:'eat',  x:11.7, y:1.55, z:4.7, face:'up', route:[H_,UP_IN,[11.7,2.6]]},
-  // the arm: round the left end of the sofa (UP_ARM), then foosball (standing, one player each side) and the armchairs
-  {act:'foos', x:2.4, y:5.9, z:0,   face:'down', stand:true, route:[H_,UP_IN,UP_MID,[7.4,1.6],UP_ARM,[2.5,5.4],[2.4,5.4]]},
-  {act:'foos', x:2.4, y:7.7, z:0,   face:'up',   stand:true, route:[H_,UP_IN,UP_MID,[7.4,1.6],UP_ARM,[2.5,5.4],[3.9,5.4],[3.9,8.3],[2.4,8.3]]},
-  {act:'read', x:1.3, y:9.2, z:4.5, face:'up', route:[H_,UP_IN,UP_MID,[7.4,1.6],UP_ARM,[2.5,5.4],[3.9,5.4],[3.9,8.4],[1.3,8.4]]},
-  {act:'read', x:3.1, y:9.2, z:4.5, face:'up', route:[H_,UP_IN,UP_MID,[7.4,1.6],UP_ARM,[2.5,5.4],[3.9,5.4],[3.9,8.4],[3.1,8.4]]}
+  // the arm: down the aisle past the sofa (UP_ARM), then foosball (standing, one player each side) and the armchairs
+  {act:'foos', x:2.4, y:5.9, z:0,   face:'down', stand:true, route:[H_,UP_IN,UP_MID,[7.4,1.6],UP_ARM,ARM_IN,[2.4,5.4]]},
+  {act:'foos', x:2.4, y:7.7, z:0,   face:'up',   stand:true, route:[H_,UP_IN,UP_MID,[7.4,1.6],UP_ARM,ARM_IN,[3.9,5.4],[3.9,8.3],[2.4,8.3]]},
+  {act:'read', x:1.3, y:9.2, z:4.5, face:'up', route:[H_,UP_IN,UP_MID,[7.4,1.6],UP_ARM,ARM_IN,[3.9,5.4],[3.9,8.4],[1.3,8.4]]},
+  {act:'read', x:3.1, y:9.2, z:4.5, face:'up', route:[H_,UP_IN,UP_MID,[7.4,1.6],UP_ARM,ARM_IN,[3.9,5.4],[3.9,8.4],[3.1,8.4]]},
+  // the smoking room in the back corner: in through its glass door, two smokers standing either side of the ashtray
+  {act:'smoke', x:1.3, y:2.25, z:0, face:'up',   stand:true, route:[H_,UP_IN,UP_MID,[7.4,1.6],UP_ARM,SMOKE_IN,[2.2,2.6],[1.3,2.6]]},
+  {act:'smoke', x:1.3, y:.85,  z:0, face:'down', stand:true, route:[H_,UP_IN,UP_MID,[7.4,1.6],UP_ARM,SMOKE_IN,[2.2,.5],[1.3,.5]]}
 ];
+// The smoking room: glass walls along x = x1 (with the door, door[0]–door[1]) and y = y1, h tall; the ashtray stands at ash
+const SMOKE = {x1:2.7, y1:3.7, door:[1.1, 2.1], h:25, ash:[1.3, 1.55]};
 const FOOS = {x:1.6, y:6.4, w:1.6, d:.8};   // foosball table in the arm, players at its long sides
-const ACT = {tv:{emoji:'📺', text:'watching TV'}, game:{emoji:'🎮', text:'playing games'}, eat:{emoji:'🍜', text:'having lunch'}, coffee:{emoji:'☕', text:'having coffee'}, snack:{emoji:'🍪', text:'having a snack'}, nap:{emoji:'😴', text:'napping on the sofa'}, chill:{emoji:'🛋️', text:'chilling, watching TV'}, hangout:{emoji:'🍵', text:'hanging out at the counter'}, foos:{emoji:'⚽', text:'playing foosball'}, read:{emoji:'📖', text:'reading in the corner'}};
+const ACT = {tv:{emoji:'📺', text:'watching TV'}, game:{emoji:'🎮', text:'playing games'}, eat:{emoji:'🍜', text:'having lunch'}, coffee:{emoji:'☕', text:'having coffee'}, snack:{emoji:'🍪', text:'having a snack'}, nap:{emoji:'😴', text:'napping on the sofa'}, chill:{emoji:'🛋️', text:'chilling, watching TV'}, hangout:{emoji:'🍵', text:'hanging out at the counter'}, foos:{emoji:'⚽', text:'playing foosball'}, read:{emoji:'📖', text:'reading in the corner'}, smoke:{emoji:'🚬', text:'on a smoke break'}};
 // Outside lunch and coffee, an idle team member now and then takes a short break (snack, TV or games):
 // about one trip every 15 minutes for the whole office, so it never looks busy
 const SNACK_EVERY = 15 * 60;            // seconds between trips, plus up to 3 random minutes
@@ -799,7 +812,7 @@ function backToDesk(p){
 function startPath(p, steps){ p.path = steps; p.seated = false; p.act = null; p.napping = false; p.toDesk = false; }
 
 function goOnBreak(p, casual = false){
-  const prefer = casual ? (Math.random() < .5 ? ['eat'] : ['tv', 'game', 'foos', 'read']) : curPhase === 'lunch' ? ['eat'] : curPhase === 'night' ? ['tv', 'game', 'eat', 'foos', 'read'] : ['eat', 'tv', 'read'];
+  const prefer = casual ? (Math.random() < .5 ? ['eat'] : ['tv', 'game', 'foos', 'read', 'smoke']) : curPhase === 'lunch' ? ['eat'] : curPhase === 'night' ? ['tv', 'game', 'eat', 'foos', 'read', 'smoke'] : ['eat', 'tv', 'read', 'smoke'];
   const s = freeSpot(null, prefer); if (!s) return false;
   p.casual = casual; if (casual) { p.snackLeft = 60 + Math.random() * 90; scheduleSnack(); }
   s.who = p;
@@ -1114,6 +1127,17 @@ function drawShell(){
     floorShadow(3.6, 3.7, 3.85, 1.05); floorShadow(4.2, .15, 3.2, .6, .8);
   });
   at(0, 0, FLOOR2, () => floorShadow(8.8, .15, 3.4, .8, .8));
+  // inside the smoking room: a cool grey floor mat, a bench under the window and an extractor fan (the glass is drawn with the people)
+  ctx.globalAlpha = P.night ? .35 : .42;
+  poly(P.night ? '#59636a' : '#aeb9bd', [[.08, .08, FLOOR2 + .1], [SMOKE.x1 - .08, .08, FLOOR2 + .1], [SMOKE.x1 - .08, SMOKE.y1 - .08, FLOOR2 + .1], [.08, SMOKE.y1 - .08, FLOOR2 + .1]]);
+  ctx.globalAlpha = 1;
+  at(0, 0, FLOOR2, () => {
+    floorShadow(.12, 2.0, .55, 1.5); floorShadow(SMOKE.ash[0] - .2, SMOKE.ash[1] - .2, .4, .4);
+    [2.1, 3.3].forEach(y => box3(.2, y, 0, .4, .1, 3.4, '#4a3426'));
+    box3(.15, 2.0, 3.4, .55, 1.5, .8, '#9a6a44');
+  });
+  faceX(.02, .3, 1.3, FLOOR2 + 15, FLOOR2 + 22, P.night ? '#8d9296' : '#d6d9d5');
+  for (let z = FLOOR2 + 15.8; z < FLOOR2 + 21.5; z += 1.2) faceX(.03, .42, 1.18, z, z + .45, '#5c646a');
   // Warm light is clipped to the L-shaped mezzanine; it cannot spill across the downstairs walls.
   ctx.save(); path([[0,0,FLOOR2],[MEZZ.x1,0,FLOOR2],[MEZZ.x1,MEZZ.y1,FLOOR2],[ARM.x1,MEZZ.y1,FLOOR2],[ARM.x1,ARM.y1,FLOOR2],[0,ARM.y1,FLOOR2]]); ctx.clip();
   [[5.5,3.2,50],[10.5,2.0,42],[2.3,8.2,32]].forEach(([x,y,rad]) => {
@@ -1599,6 +1623,49 @@ function drawArmchair(x, y){
   box3(x - .55, y - .4, 0, .15, .9, 7, shade(ARMCHAIR, .92)); box3(x + .4, y - .4, 0, .15, .9, 7, shade(ARMCHAIR, .92));
 }
 function drawArmchairBack(x, y){ box3(x - .55, y + .35, 0, 1.1, .25, 9.5, shade(ARMCHAIR, .95)); }
+// Smoking room: a standing ashtray, and the glass walls in short panes so people inside are behind them and people
+// walking past outside are in front (each pane sorts by its own front end)
+function drawAshtray(){
+  const [x, y] = SMOKE.ash;
+  box3(x - .12, y - .12, 0, .24, .24, 8.2, '#8d969c');
+  box3(x - .25, y - .25, 8.2, .5, .5, .9, '#5f686e');
+  poly('#d8cfb8', [[x - .18, y - .18, 9.11], [x + .18, y - .18, 9.11], [x + .18, y + .18, 9.11], [x - .18, y + .18, 9.11]]);
+}
+function glassPane(alongX, a, b, open){
+  const h = SMOKE.h, glass = P.night ? 'rgba(150,190,210,.2)' : 'rgba(205,235,248,.34)', frame = P.night ? '#3b444c' : '#68747e';
+  const face = alongX ? (u0, u1, z0, z1, c) => faceY(SMOKE.y1, u0, u1, z0, z1, c) : (u0, u1, z0, z1, c) => faceX(SMOKE.x1, u0, u1, z0, z1, c);
+  const bar = (u0, u1, z, hh) => alongX ? box3(u0, SMOKE.y1 - .04, z, u1 - u0, .08, hh, frame) : box3(SMOKE.x1 - .04, u0, z, .08, u1 - u0, hh, frame);
+  face(a, b, 0, h, glass);
+  // a light streak across each pane reads as glass
+  ctx.globalAlpha = P.night ? .12 : .3;
+  const sx = alongX ? (u, z) => [u, SMOKE.y1, z] : (u, z) => [SMOKE.x1, u, z];
+  poly('#ffffff', [sx(a + .08, 4), sx(a + .2, 4), sx(Math.min(b, a + .48), h - 4), sx(Math.min(b, a + .36), h - 4)]);
+  ctx.globalAlpha = 1;
+  bar(a, b, 0, open ? .4 : 1.2); bar(a, b, h - .8, .8);
+  bar(b - .05, b + .05, 0, h);
+}
+function smokeEnts(ents){
+  const D = SMOKE.door, side = [0, .55, D[0], D[1], 2.65, 3.2, SMOKE.y1], front = [0, .55, 1.1, 1.65, 2.2, SMOKE.x1];
+  for (let i = 1; i < side.length; i++) {
+    const a = side[i - 1], b = side[i], isDoor = a === D[0];
+    ents.push({k: 100 + SMOKE.x1 + b, f: () => at(0, 0, FLOOR2, () => {
+      baked('glassX|' + a, () => glassPane(false, a, b, isDoor));
+      // the door: a push bar on the lounge side and a small sign
+      if (isDoor) baked('smokedoor', () => {
+        box3(SMOKE.x1 + .03, D[0] + .15, 9, .05, .05, 6.5, '#c9ced6');
+        sign('x', SMOKE.x1 + .02, D[0] + .2, D[1] - .2, SMOKE.h - 6, SMOKE.h - 3.2, '#22303a', 'SMOKE', '#ffd36b');
+      });
+    })});
+  }
+  for (let i = 1; i < front.length; i++) {
+    const a = front[i - 1], b = front[i];
+    ents.push({k: 100 + b + SMOKE.y1, f: () => at(0, 0, FLOOR2, () => baked('glassY|' + a, () => glassPane(true, a, b, false)))});
+  }
+  // the room's name on the front glass, drawn after the panes it covers
+  ents.push({k: 100 + 2.2 + SMOKE.y1 + .01, f: () => at(0, 0, FLOOR2, () => baked('smokesign', () =>
+    sign('y', SMOKE.y1 + .02, .6, 1.95, SMOKE.h - 6.5, SMOKE.h - 3, '#22303a', 'SMOKING AREA', '#ffd36b')))});
+  ents.push({k: 100 + SMOKE.ash[0] + SMOKE.ash[1] + .15, f: () => at(0, 0, FLOOR2, () => baked('ashtray', drawAshtray))});
+}
 // ---------- People ----------
 function drawPerson(p){
   let x, y;
@@ -1622,6 +1689,7 @@ function drawPerson(p){
     if (p.act === 'game') arms = Math.floor(T * 7) % 4;
     else if (p.act === 'foos') arms = Math.floor(T * 5 + p.y) % 4;
     else if (p.act === 'eat') arms = Math.floor(T * 1.6 + p.seatX) % 2 ? 0 : -1;
+    else if (p.act === 'smoke') arms = Math.floor(T * .7 + p.y * 3) % 4 ? 1 : 0;
     else if (atDesk(p) && (p === lead ? lead.mode === 'working' : p.state === 'working' && !p.thinking)) arms = Math.floor(T * 9) % 4;
   }
   if (reduce && arms > 0) arms = 0;
@@ -1838,6 +1906,10 @@ function update(dt){
   if (lead.mode === 'working' && atDesk(lead) && Math.random() < dt * 1.5 && !reduce) { const [sx, sy] = pj(lead.gx + .5, lead.dy + .5, 14); spawn(sx, sy, '#5b5fc7', null); }
   // nappers breathe out a "z" now and then
   everyone.forEach(p => { if (p.seated && p.napping && p.sx != null && !reduce && Math.random() < dt * .7) spawn(p.sx + 5, p.sy + 2, '#c9d6ff', 'z'); });
+  // smokers breathe out a little smoke now and then
+  everyone.forEach(p => {
+    if (p.seated && p.act === 'smoke' && p.spot && !reduce && Math.random() < dt * 1.2) { const [sx, sy] = pj(p.x, p.y, p.z + 15); spawn(sx + (p.face === 'up' ? 0 : 3), sy, P.night ? 'rgba(205,210,216,.75)' : 'rgba(150,158,166,.7)', 'steam'); }
+  });
   kanban.doing = workers.filter(w => w.job).map(w => w.color);
   kanban.todo = workers.flatMap(w => w.queue.map(() => w.color));
   if (planning && !kanban.todo.length) kanban.todo = ['#9aa4ad'];
@@ -1920,6 +1992,7 @@ function render(){
     ents.push({k: 100 + s.x + s.y - .2, f: () => at(0, 0, FLOOR2, () => baked('stool|' + i, () => drawChairSeat(c, '#a8744a', false)))});
   });
   ents.push({k: 100 + FOOS.x + FOOS.w / 2 + FOOS.y + FOOS.d / 2, f: () => at(0, 0, FLOOR2, drawFoosball)});
+  smokeEnts(ents);
   SPOTS.filter(s => s.act === 'read').forEach((s, i) => ents.push(
     {k: 100 + s.x + s.y - .2, f: () => at(0, 0, FLOOR2, () => baked('arm|' + i, () => drawArmchair(s.x, s.y)))},
     {k: 100 + s.x + s.y + .45, f: () => at(0, 0, FLOOR2, () => baked('armback|' + i, () => drawArmchairBack(s.x, s.y)))}));
