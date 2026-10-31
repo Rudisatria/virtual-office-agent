@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const http = require('node:http');
 const { Script } = require('node:vm');
 
 const root = path.join(__dirname, '..');
@@ -44,12 +45,33 @@ async function main() {
   }
   assert.ok(ready, 'isolated server started');
 
+  const setupPage = await fetch(origin + '/setup');
+  assert.equal(setupPage.headers.get('x-frame-options'), 'DENY', 'other sites cannot frame Setup');
+  assert.equal(setupPage.headers.get('x-content-type-options'), 'nosniff', 'browser will not guess file types');
+  const skillArchive = await fetch(origin + '/skills/office-qa.zip');
+  assert.equal(skillArchive.status, 200);
+  assert.equal(skillArchive.headers.get('cache-control'), 'no-store', 'edited skill archives are not cached');
+
+  const wrongHost = await new Promise((resolve, reject) => {
+    http.get(origin + '/config', { headers: { Host: 'untrusted.example' } }, response => {
+      response.resume(); resolve(response.statusCode);
+    }).on('error', reject);
+  });
+  assert.equal(wrongHost, 403, 'DNS rebinding host is rejected');
+  const nonJsonHook = await fetch(origin + '/hook', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '{}' });
+  assert.equal(nonJsonHook.status, 415, 'hook accepts JSON only');
+  const nonJsonSetup = await fetch(origin + '/setup', { method: 'POST', headers: { 'Content-Type': 'text/plain', 'X-Office': 'setup' }, body: '{}' });
+  assert.equal(nonJsonSetup.status, 415, 'settings accept JSON only');
+  const noSetupHeader = await fetch(origin + '/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  assert.equal(noSetupHeader.status, 404, 'settings changes require the setup header');
+
   const appAction = await fetch(origin + '/setup/app/uninstall', { method: 'POST', headers: { 'X-Office': 'setup' } });
   assert.equal(appAction.status, 409, 'uninstall is unavailable outside an installed office');
   const noHeader = await fetch(origin + '/setup/app/uninstall', { method: 'POST' });
   assert.equal(noHeader.status, 404, 'management actions require the setup header');
 
   const before = await getJson('/setup/data');
+  assert.equal(before.version, require('../package.json').version);
   assert.equal(before.config.breaks.coffee.start, '15:30');
   assert.equal(before.hooks.hint, false);
   assert.equal(before.codexHooks, false);

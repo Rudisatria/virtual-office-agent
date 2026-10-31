@@ -21,6 +21,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Atkinson Hyp
 .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 64px}
 a{color:var(--green)}
 h1{font:700 2rem/1.1 "Pixelify Sans",monospace;margin:0;color:var(--green);text-shadow:0 0 14px var(--green-glow)}
+.app-version{display:inline-block;margin:8px 0 0;padding:2px 9px;border:1px solid var(--green-line);border-radius:99px;color:var(--green);font-size:.8rem;font-weight:700}
 h2{font:700 1.15rem "Pixelify Sans",monospace;margin:0 0 4px;color:var(--green)}
 .lead{color:var(--muted);margin:6px 0 0;max-width:70ch}
 .subhead{font:700 1rem "Pixelify Sans",monospace;color:var(--ink);margin:16px 0 4px}
@@ -83,6 +84,7 @@ code{background:#0b100e;border:1px solid var(--line);border-radius:4px;padding:1
   <header>
     <div>
       <h1>Office setup</h1>
+      <p class="app-version" id="appVersion">Virtual Office version loading…</p>
       <p class="lead">Name your office and your team, and give each team member a skill. When you send a prompt, the member it fits picks it up, and Claude Code and Codex are told to use that member's skill.</p>
     </div>
     <a href="/">← Back to the office</a>
@@ -236,6 +238,7 @@ function memberCard(role, m){
 
 function render(d){
   data = d;
+  $('appVersion').textContent = `Virtual Office v${d.version}`;
   const c = d.config;
   $('officeName').value = c.officeName; $('manager').value = c.manager;
   $('hStart').value = c.hours.start; $('hEnd').value = c.hours.end;

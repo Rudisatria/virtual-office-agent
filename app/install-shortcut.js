@@ -38,9 +38,6 @@ else {
   $s.Save(); "Created $lnk"
 }`).join('\n') + `
 # virtual-office:// link: the "Server not running · click to start" button in the office opens it to start the server
-# (rudi-office:// was its old name; removed when found)
-$old = 'HKCU:\\Software\\Classes\\rudi-office'
-if (Test-Path $old) { Remove-Item $old -Recurse }
 $key = 'HKCU:\\Software\\Classes\\virtual-office'
 if (${uninstall ? '$true' : '$false'}) { if (Test-Path $key) { Remove-Item $key -Recurse; "Removed the virtual-office:// link" } }
 else {

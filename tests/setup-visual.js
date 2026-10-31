@@ -50,12 +50,13 @@ const server = spawn(process.execPath, ['server.js'], {
       await call('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: name === 'mobile' });
       await call('Page.navigate', { url: 'http://127.0.0.1:4399/setup' });
       await new Promise(resolve => setTimeout(resolve, 1100));
-      const metrics = await call('Runtime.evaluate', { expression: '({viewport: innerWidth, page: document.documentElement.scrollWidth})', returnByValue: true });
+      const metrics = await call('Runtime.evaluate', { expression: '({viewport: innerWidth, page: document.documentElement.scrollWidth, version: document.querySelector("#appVersion").textContent})', returnByValue: true });
       const shot = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       if (!shot.result?.data) throw new Error(`${name}: screenshot failed`);
       fs.writeFileSync(output, Buffer.from(shot.result.data, 'base64'));
-      const { viewport, page } = metrics.result.result.value;
+      const { viewport, page, version } = metrics.result.result.value;
       if (page > viewport) throw new Error(`${name}: horizontal overflow ${page}px > ${viewport}px`);
+      if (version !== `Virtual Office v${require('../package.json').version}`) throw new Error(`${name}: wrong version label: ${version}`);
       console.log(`${name}: ${viewport}px viewport, ${page}px page; ${output}`);
       if (name === 'mobile') {
         await call('Runtime.evaluate', { expression: 'document.querySelector("#form").requestSubmit()' });

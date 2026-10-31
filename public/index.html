@@ -212,10 +212,10 @@ pre{background:var(--code-bg);border:1px solid var(--line);padding:10px;overflow
 <script>
 (() => {
 // A timber hall cut open at the front, its floor cut straight across the front corner (x along the back wall,
-// y toward the viewer, z up). Downstairs the work area: two diagonal rows of desks and the manager's room (a low wall round it) in the
+// y toward the viewer, z up). Downstairs the work area: three diagonal rows of desks and the manager's room (a low wall round it) in the
 // front-left corner. Upstairs, on a mezzanine along the back wall, the lounge (TV, sofa, bean bags, coffee counter),
-// reached by a spiral staircase beside the landing.
-const W = 576, H = 350, TW = 14, TH = 7, OX = 267, OY = 117, ZS = 1.2, COLS = 20.5, ROWS = 17.5, DW = 2.0;
+// reached by an L-shaped staircase beside the landing.
+const W = 576, H = 350, TW = 14, TH = 7, OX = 267, OY = 117, ZS = 1.2, COLS = 20.5, ROWS = 17.5, DW = 1.8;
 const CUT = 29.5;                 // the front corner of the floor is cut along x + y = CUT
 const FLOOR2 = 48, UPWALL = 30;   // the mezzanine's height, and the walls above it
 const MEZZ = {x1:13, y1:5.2}, LANDING = {x0:13, x1:15.4, y1:3.4};   // mezzanine x 0–13, y 0–5.2; the landing at the top of the stairs
@@ -458,15 +458,17 @@ function paintPerson(G, p, pose){
   const hy = oy + nod, short = p.hairStyle === 'short';
   if (back && short) {
     // short men's cut: the hair stops above the neck, ears and nape show
-    ell(4, 20 + hy, 2.5, 3.5, s); ell(38, 20 + hy, 2.5, 3.5, s);
+    ell(4, 20 + hy, 1.7, 2.5, s); ell(38, 20 + hy, 1.7, 2.5, s);
     ell(21, 16 + hy, 16, 13.5, Sk); ell(21, 16 + hy, 16, 13.5, s, (x, y) => y >= 26 + hy);
     ell(21, 13 + hy, 17, 12.5, H, (x, y) => y <= 23 + hy); ell(21, 13 + hy, 17, 12.5, h, (x, y) => y <= 23 + hy && rim(21, 13 + hy, 17, 12.5)(x, y));
     for (let x = 11; x <= 17; x++) put(x, 3 + hy - (x < 14 ? 0 : 1), hi);
+    rect(11, 13 + hy, 13, 14 + hy, shade(H, 1.18));
   } else if (back) {
     ell(21, 15 + hy, 18, 15, H); ell(21, 15 + hy, 18, 15, h, rim(21, 15 + hy, 18, 15));
     for (let x = 11; x <= 17; x++) put(x, 4 + hy - (x < 14 ? 0 : 1), hi);
+    rect(11, 13 + hy, 13, 15 + hy, shade(H, 1.18));
   } else if (short) {
-    ell(4 + fx, 20 + hy, 2.5, 3.5, s); ell(38 + fx, 20 + hy, 2.5, 3.5, s);   // ears
+    ell(4 + fx, 20 + hy, 1.7, 2.5, s); ell(38 + fx, 20 + hy, 1.7, 2.5, s);   // ears
     ell(21, 12 + hy, 17, 11, H);
     ell(21 + fx, 19 + hy, 14, 11, Sk); rect(10 + fx, 24 + hy, 32 + fx, 28 + hy, Sk);   // squarer jaw
     rect(11 + fx, 29 + hy, 31 + fx, 29 + hy, s); ell(21 + fx, 19 + hy, 14, 11, s, (x, y) => y >= 28 + hy);
@@ -581,13 +583,13 @@ const TEAM = [
   {id:'devops', tool:'devops_engineer', name:'DevOps', color:'#2f9e74', hair:'#1f1a16', skin:'#d6a07a', gx:4.6,
    desc:'DevOps engineer: CI/CD pipelines, deployments, Docker, cloud infrastructure, monitoring. Pass the real config or runbook in `work`. Returns when done.'}
 ];
-// Where everyone sits: the chair faces the desk behind it. The back row stands against the wall under the mezzanine, the
-// front row diagonally in front of it, and the walkway runs
-// between the rows across the room along x + y = LANE_V. Each person walks from their chair to the walkway by `exit`.
+// Three parallel desk rows. Smaller workstations and rugs keep a visible tiled aisle between rows.
 const LANE_V = 19.8;
 const onLane = u => ({x:(LANE_V + u) / 2, y:(LANE_V - u) / 2, lane:true});   // a point on the walkway, u = x - y across the screen
+const BACK_AISLE = 8.5, HUB_EXIT = onLane(8.2);
 const SEATS = {pm:[6.3, 6.95, 'back'], designer:[8.9, 6.95, 'back'], frontend:[11.5, 6.95, 'back'],
-  qa:[7.5, 15.5, 'front'], devops:[10.25, 12.75, 'front'], security:[13, 10, 'front'], backend:[15.75, 7.25, 'front']};
+  qa:[6.3, 11, 'middle'], devops:[8.9, 11, 'middle'], backend:[11.5, 11, 'middle'],
+  security:[11.5, 15.05, 'front']};
 // The manager's room in the front-left corner: x 0–ROOM.x1, y ROOM.y0–ROWS. Its back is the wall under the arm, its side
 // a low wall carrying on from the arm's wall (the door in it), its front a low wall along the hall's open edge.
 const ROOM = {x1:ARM.x1, y0:ARM.y1, door:[13.3, 14.3]};
@@ -595,13 +597,16 @@ function deskOf(id){
   if (id === 'manager') {
     const sx = 2.5, sy = 14.7, dw = 2.2;
     return {gx:sx - dw / 2, dw, dy:sy - 1.5, seatX:sx, seatY:sy, room:true,
-      exit:[{x:4.0, y:sy}, {x:4.0, y:LANE_V - 6}, {x:6, y:LANE_V - 6, lane:true}]};
+      exit:[{x:4, y:sy}, {x:4, y:13.8}, {x:5, y:13.8}, {x:5, y:BACK_AISLE},
+        {x:14, y:BACK_AISLE}, {...HUB_EXIT}]};
   }
   const [sx, sy, row] = SEATS[id];
-  // back row: straight out from the chair to the walkway; front row: past the desk's left end, then back to the walkway
-  const exit = row === 'back' ? [{x:sx, y:LANE_V - sx, lane:true}]
-    : [{x:sx - 1.35, y:sy}, {x:sx - 1.35, y:LANE_V - (sx - 1.35), lane:true}];
-  return {gx:sx - DW / 2, dw:DW, dy:sy - 1.5, seatX:sx, seatY:sy, frontRow:row === 'front', exit};
+  // Each row reaches the right-hand hub along a clear aisle; the front row uses the left edge first.
+  const exit = row === 'back' ? [{x:sx, y:BACK_AISLE}, {x:14, y:BACK_AISLE}, {...HUB_EXIT}]
+    : row === 'middle' ? [{x:sx, y:sy + 1}, {x:14, y:sy + 1}, {...HUB_EXIT}]
+    : [{x:sx, y:sy + 1}, {x:5, y:sy + 1}, {x:5, y:BACK_AISLE},
+      {x:14, y:BACK_AISLE}, {...HUB_EXIT}];
+  return {gx:sx - DW / 2, dw:DW, dy:sy - 1.5, seatX:sx, seatY:sy, frontRow:row !== 'back', exit};
 }
 
 function mkBubble(color){
@@ -650,6 +655,11 @@ const lead = person({id:'manager', name:'Manager', label:'Me', color:'#33415e', 
   {...deskOf('manager'), mode:'working', presence:'available', stagger:0});
 const dot = document.createElement('span'); dot.className = 'dot'; lead.tag.prepend(dot);
 const everyone = workers.concat([lead]);
+// The workstations leave a clear tiled aisle between rows. Two front stations are unassigned.
+const emptyDesks = [[6.3, 15.05], [8.9, 15.05]].map(([seatX, seatY], i) => ({
+  id:`empty-${i}`, color:'#667780', empty:true, seatX, seatY, gx:seatX - DW / 2, dw:DW, dy:seatY - 1.5
+}));
+const officeDesks = everyone.concat(emptyDesks);
 let planning = false, breakSetting = 'schedule', curPhase = null, lastPhase;
 
 const roster = document.getElementById('roster');
@@ -961,6 +971,13 @@ function drawUnderWalls(){
   faceY(Y + .02, 7.4, 10.6, 20.8, 34.6, '#2a2f3a'); box3(8.7, Y, 19.6, .6, .2, 1.2, '#2a2f3a');
   sign('y', Y + .02, 11.1, 12.8, 24.5, 31, '#22303a', '99.9%', '#5bea8c');
   sign('y', Y + .02, 11.1, 12.8, 22, 24.4, '#2f3a46', 'UPTIME', '#c9d6e2');
+  // A slim cable raceway and a few data outlets sit below the wall displays, behind the desks.
+  faceY(Y + .022, 4.85, 12.8, 15.2, 15.55, '#59636a');
+  faceY(Y + .024, 4.85, 12.8, 15.47, 15.55, '#9aabb1');
+  [5.3, 8.9, 12.35].forEach(x => {
+    faceY(Y + .026, x, x + .28, 13.4, 15.25, '#34434c');
+    faceY(Y + .028, x + .06, x + .22, 14.05, 14.28, '#77c6ad');
+  });
   box3(6.0, Y, 37.2, 6.0, .12, 5, P.timber);
   sign('y', Y + .14, 6.1, 11.9, 37.6, 41.8, shade(P.timber, 1.25), officeName, '#fff1c4');
   // under the arm: the WC and the meeting room, a picture between them
@@ -982,6 +999,26 @@ function drawUnderWalls(){
   sign('y', LANDING.y1 + .02, 13.3, 14.5, 14, 17.6, '#fff1c4', 'YOUR PC', '#3a2e26');
   box3(14.85, LANDING.y1 + .02, 0, .28, .22, 7, '#c8423a'); box3(14.93, LANDING.y1 + .08, 7, .12, .1, 1, '#2a2f3a');
 }
+// Framed panes share the clock's sky color; the low skyline and mullions keep them readable at office scale.
+function drawWindow(plane, at0, a, b, z0, z1){
+  const face = plane === 'x' ? faceX : faceY, wall = at0 + .012;
+  const land = mix('#6ba58e', '#25344a', 1 - sun.light);
+  face(wall, a - .12, b + .12, z0 - .8, z1 + .8, shade(P.timber, .8));
+  face(wall + .002, a - .04, b + .04, z0 - .38, z1 + .38, P.frame);
+  face(wall + .004, a + .07, b - .07, z0, z1, sun.sky);
+  face(wall + .006, a + .07, a + (b - a) * .38, z0, z0 + (z1 - z0) * .32, land);
+  face(wall + .006, a + (b - a) * .38, a + (b - a) * .73, z0, z0 + (z1 - z0) * .43, shade(land, .9));
+  face(wall + .006, a + (b - a) * .73, b - .07, z0, z0 + (z1 - z0) * .27, land);
+  if (sun.light < .25) {
+    face(wall + .007, a + .3, a + .36, z1 - 2.3, z1 - 2.1, '#fff1c4');
+    face(wall + .007, b - .38, b - .32, z1 - 3.1, z1 - 2.9, '#fff1c4');
+  }
+  face(wall + .009, (a + b) / 2 - .055, (a + b) / 2 + .055, z0, z1, P.frame);
+  face(wall + .01, a + .07, b - .07, z0 + (z1 - z0) * .54, z0 + (z1 - z0) * .54 + .18, P.frame);
+  ctx.globalAlpha = .28;
+  face(wall + .011, a + .14, a + .22, z0 + (z1 - z0) * .57, z1 - .55, '#ffffff');
+  ctx.globalAlpha = 1;
+}
 function drawShell(){
   const TOP = FLOOR2 + UPWALL, B = -4, XC = CUT - ROWS, YC = CUT - COLS;
   // the base the hall stands on: stone along the open sides, with a timber edge under the floor
@@ -997,6 +1034,13 @@ function drawShell(){
   poly(shade(P.timber, 1.1), [[XC, ROWS, 0], [COLS, YC, 0], [COLS, YC, -.8], [XC, ROWS, -.8]]);
   poly(shade(P.timber, .8), [[COLS, 0, 0], [COLS, YC, 0], [COLS, YC, -.8], [COLS, 0, -.8]]);
   drawTiles();
+  // Daylight is painted once with the floor, clipped to the manager's room.
+  if (sun.light > .08) {
+    ctx.save(); path([[0, ROOM.y0], [ROOM.x1, ROOM.y0], [ROOM.x1, ROWS], [0, ROWS]]); ctx.clip();
+    const [sx, sy] = pj(1.45, 12.3, .2);
+    glow(sx, sy, 29, `rgba(255,223,169,${(sun.light * .1 + sun.warm * .06).toFixed(3)})`);
+    ctx.restore();
+  }
 
   // the two walls, full height, with a beam where the mezzanine meets them and panelling upstairs too
   timberWall(onX(0), 0, ROWS, 0, TOP, [.1, MEZZ.y1, ROOM.y0, ROWS - .1], true);
@@ -1006,13 +1050,21 @@ function drawShell(){
   poly(P.ao, [[0, 0], [COLS, 0], [COLS, .45], [.45, .45]]); poly(P.ao, [[0, 0], [.45, .45], [.45, ROWS], [0, ROWS]]);
 
   // rugs: one under each desk, a bigger one in the manager's room
-  everyone.forEach(w => {
-    const x0 = w.gx - .45, x1 = w.gx + w.dw + .45, y0 = w.dy - .35, y1 = w.seatY + .85;
+  officeDesks.forEach(w => {
+    const side = w.room ? .45 : .25, back = w.room ? .35 : .2, front = w.room ? .85 : .7;
+    const x0 = w.gx - side, x1 = w.gx + w.dw + side, y0 = w.dy - back, y1 = w.seatY + front;
     poly(P.rugEdge, [[x0, y0, .1], [x1, y0, .1], [x1, y1, .1], [x0, y1, .1]]);
     poly(P.rug, [[x0 + .15, y0 + .15, .2], [x1 - .15, y0 + .15, .2], [x1 - .15, y1 - .15, .2], [x0 + .15, y1 - .15, .2]]);
     floorShadow(w.gx, w.dy, w.dw, 1.1);
   });
-  floorShadow(.15, 14.8, .5, 2, 1); floorShadow(STATION.x, STATION.y, STATION.w, STATION.d); floorShadow(14.85, 3.42, .3, .25);
+  // Cool pools from the workstations stay on the floor and are painted only when the scenery cache rebuilds.
+  ctx.save(); path(FLOOR_PTS); ctx.clip();
+  everyone.forEach(w => {
+    const [sx, sy] = pj(w.seatX, w.dy + .8, .3);
+    glow(sx, sy, 23, `rgba(114,195,211,${P.night ? .10 : .075})`);
+  });
+  ctx.restore();
+  floorShadow(.15, 14.8, .5, 2, 1); floorShadow(14.85, 3.42, .3, .25);
 
   drawUnderWalls();
   // left wall: a picture in the manager's room; the planning and kanban boards hang upstairs on the arm's wall (BOARD_Z higher)
@@ -1021,18 +1073,29 @@ function drawShell(){
   faceX(.01, 7.85, 9.95, bz + 14.5, bz + 25.5, P.boardFrame); faceX(.02, 7.95, 9.85, bz + 14.9, bz + 25.1, P.board);
   faceX(.03, 8.6, 8.63, bz + 15.2, bz + 24.8, '#c3c9cf'); faceX(.03, 9.27, 9.3, bz + 15.2, bz + 24.8, '#c3c9cf');
   ['#9aa4ad', '#f2c14e', '#5bbf86'].forEach((c, i) => faceX(.03, 8.0 + i * .67, 8.5 + i * .67, bz + 24, bz + 24.8, c));
-  faceX(.01, 11.4, 12.9, 13, 21, '#3a2e26'); faceX(.02, 11.5, 12.8, 13.7, 20.3, '#bfe3f4');
-  faceX(.03, 11.5, 12.8, 13.7, 16, '#5bbf86'); poly('#2f9e74', [[.03, 11.8, 16], [.03, 12.5, 16], [.03, 12.15, 19]]);
+  drawWindow('x', 0, 11.35, 13.05, 12.5, 23);
 
 
   // the mezzanine: plank floor, its thick front edge, and the walls' upstairs decorations
   drawFloor(0, MEZZ.x1, 0, MEZZ.y1, FLOOR2); drawFloor(LANDING.x0, LANDING.x1, 0, LANDING.y1, FLOOR2); drawFloor(0, ARM.x1, MEZZ.y1, ARM.y1, FLOOR2);
+  if (sun.light > .08) {
+    ctx.save(); path([[0,0,FLOOR2],[MEZZ.x1,0,FLOOR2],[MEZZ.x1,MEZZ.y1,FLOOR2],[ARM.x1,MEZZ.y1,FLOOR2],[ARM.x1,ARM.y1,FLOOR2],[0,ARM.y1,FLOOR2]]); ctx.clip();
+    [[1.9,1.7,32],[1.1,3.6,27]].forEach(([x,y,rad]) => {
+      const [sx,sy] = pj(x,y,FLOOR2+.2);
+      glow(sx,sy,rad,`rgba(255,224,172,${(sun.light * .12 + sun.warm * .08).toFixed(3)})`);
+    });
+    ctx.restore();
+  }
   poly(P.ao, [[0, 0, FLOOR2], [LANDING.x1, 0, FLOOR2], [LANDING.x1, .45, FLOOR2], [.45, .45, FLOOR2]]); poly(P.ao, [[0, 0, FLOOR2], [.45, .45, FLOOR2], [.45, ARM.y1, FLOOR2], [0, ARM.y1, FLOOR2]]);
   const edge = shade(P.timber, .9);
   faceY(MEZZ.y1, ARM.x1, MEZZ.x1, FLOOR2 - 3.5, FLOOR2, edge); faceX(MEZZ.x1, LANDING.y1, MEZZ.y1, FLOOR2 - 3.5, FLOOR2, shade(edge, .8));
   faceY(LANDING.y1, LANDING.x0, LANDING.x1, FLOOR2 - 3.5, FLOOR2, edge); faceX(LANDING.x1, 0, LANDING.y1, FLOOR2 - 3.5, FLOOR2, shade(edge, .8));
   faceX(ARM.x1, MEZZ.y1, ARM.y1, FLOOR2 - 3.5, FLOOR2, shade(edge, .8)); faceY(ARM.y1, 0, ARM.x1, FLOOR2 - 3.5, FLOOR2, edge);
-  for (let x = ARM.x1 + 1; x < MEZZ.x1; x += 2) faceY(MEZZ.y1 + .01, x, x + .06, FLOOR2 - 3.3, FLOOR2 - .2, shade(P.timber, .7));
+  for (let x = ARM.x1 + 1; x < MEZZ.x1; x += 2) {
+    faceY(MEZZ.y1 + .01, x, x + .06, FLOOR2 - 3.3, FLOOR2 - .2, shade(P.timber, .7));
+    faceY(MEZZ.y1 + .012, x + .25, x + .32, FLOOR2 - 2.5, FLOOR2 - 2.1, '#b4956d');
+  }
+  faceY(MEZZ.y1 + .012, ARM.x1, MEZZ.x1, FLOOR2 - .43, FLOOR2 - .27, shade(P.timber, 1.15));
   // the arm's rugs: under the foosball table and the armchairs
   poly(P.night ? '#2e2f52' : '#5a5fa8', [[1.0, 5.6, FLOOR2 + .1], [3.8, 5.6, FLOOR2 + .1], [3.8, 8.0, FLOOR2 + .1], [1.0, 8.0, FLOOR2 + .1]]);
   poly(P.night ? '#3a3c66' : '#7479c4', [[1.15, 5.75, FLOOR2 + .2], [3.65, 5.75, FLOOR2 + .2], [3.65, 7.85, FLOOR2 + .2], [1.15, 7.85, FLOOR2 + .2]]);
@@ -1041,16 +1104,34 @@ function drawShell(){
   at(LDX, 0, FLOOR2, () => {
     poly(P.rugEdge1, [[3.3, 1.3, .1], [7.9, 1.3, .1], [7.9, 4.95, .1], [3.3, 4.95, .1]]);
     poly(P.rug1, [[3.5, 1.5, .2], [7.7, 1.5, .2], [7.7, 4.75, .2], [3.5, 4.75, .2]]);
+    // A stitched border and woven bands give the large lounge rug some fabric detail.
+    ctx.globalAlpha = P.night ? .24 : .38;
+    const weave = P.night ? '#a48367' : '#f4d8a4';
+    poly(weave, [[3.72,1.72,.23],[7.48,1.72,.23],[7.48,1.79,.23],[3.72,1.79,.23]]);
+    poly(weave, [[3.72,4.45,.23],[7.48,4.45,.23],[7.48,4.52,.23],[3.72,4.52,.23]]);
+    [4.25,5.3,6.35].forEach(x => poly(weave, [[x,2.15,.23],[x+.08,2.15,.23],[x+.08,3.95,.23],[x,3.95,.23]]));
+    ctx.globalAlpha = 1;
     floorShadow(3.6, 3.7, 3.85, 1.05); floorShadow(4.2, .15, 3.2, .6, .8);
   });
   at(0, 0, FLOOR2, () => floorShadow(8.8, .15, 3.4, .8, .8));
-  faceY(.01, .5, 1.9, FLOOR2 + 12, FLOOR2 + 20, '#3a2e26'); faceY(.02, .6, 1.8, FLOOR2 + 12.7, FLOOR2 + 19.3, '#9fd1ff');
-  faceY(.03, .6, 1.8, FLOOR2 + 12.7, FLOOR2 + 15, '#5bbf86'); poly('#2f9e74', [[.9, .03, FLOOR2 + 15], [1.5, .03, FLOOR2 + 15], [1.2, .03, FLOOR2 + 18]]);
-  faceX(.01, 1.6, 3.6, FLOOR2 + 11, FLOOR2 + 21, '#3a2e26'); faceX(.02, 1.7, 3.5, FLOOR2 + 11.7, FLOOR2 + 20.3, '#e8a0b4');
-  faceX(.03, 1.7, 3.5, FLOOR2 + 11.7, FLOOR2 + 14.5, '#7c4fd6'); faceX(.03, 2.4, 2.8, FLOOR2 + 16, FLOOR2 + 18.6, '#fff1a8');
+  // Warm light is clipped to the L-shaped mezzanine; it cannot spill across the downstairs walls.
+  ctx.save(); path([[0,0,FLOOR2],[MEZZ.x1,0,FLOOR2],[MEZZ.x1,MEZZ.y1,FLOOR2],[ARM.x1,MEZZ.y1,FLOOR2],[ARM.x1,ARM.y1,FLOOR2],[0,ARM.y1,FLOOR2]]); ctx.clip();
+  [[5.5,3.2,50],[10.5,2.0,42],[2.3,8.2,32]].forEach(([x,y,rad]) => {
+    const [sx,sy] = pj(x,y,FLOOR2+.25);
+    glow(sx,sy,rad,`rgba(255,190,112,${P.night ? .16 : .105})`);
+  });
+  ctx.restore();
+  drawWindow('y', 0, .5, 1.9, FLOOR2 + 12, FLOOR2 + 20);
+  drawWindow('x', 0, 1.6, 3.6, FLOOR2 + 11, FLOOR2 + 21);
   // a shelf with mugs over the coffee counter
   box3(9.0, 0, FLOOR2 + 17, 3.2, .35, .4, P.timber);
+  faceY(.035, 9.05, 12.15, FLOOR2 + 16.65, FLOOR2 + 16.85, '#f2c884');
   ['#ffffff', '#f2c14e', '#e0507a', '#3f6fd8', '#ffffff'].forEach((c, i) => box3(9.2 + i * .6, .08, FLOOR2 + 17.4, .22, .22, 1.3, c));
+  // One quiet network access point keeps the lounge's technology in the background.
+  faceY(.018, 15.5, 16.32, FLOOR2 + 15.5, FLOOR2 + 19.1, '#34434c');
+  faceY(.02, 15.59, 16.23, FLOOR2 + 15.95, FLOOR2 + 18.65, '#d6d9d5');
+  faceY(.022, 15.69, 16.13, FLOOR2 + 16.4, FLOOR2 + 16.66, '#4a6770');
+  faceY(.024, 15.98, 16.07, FLOOR2 + 17.85, FLOOR2 + 18.08, '#5abf86');
   drawStairs();
   // wall lanterns (they glow every frame)
   LANTERNS.forEach(([face, u, z, w = 0]) => {
@@ -1070,8 +1151,8 @@ function drawShell(){
 }
 // Wall lanterns: on the back wall ('y', x along it) or the left wall ('x', y along it), z is the lantern's bottom;
 // a 4th value puts it on a wall under the mezzanine instead (that wall's y or x)
-const LANTERNS = [['y', 1.9, FLOOR2 + 17], ['y', 8.1, FLOOR2 + 17], ['y', 14.2, FLOOR2 + 17], ['y', 17.6, FLOOR2 + 17], ['y', 20.1, 25],
-  ['x', 2.6, FLOOR2 + 17], ['x', 5.0, FLOOR2 + 17], ['x', 16.9, 22], ['x', 7.75, 24, ARM.x1]];
+const LANTERNS = [['y', 8.1, FLOOR2 + 17], ['y', 14.2, FLOOR2 + 17], ['y', 17.6, FLOOR2 + 17], ['y', 20.1, 25],
+  ['x', 5.0, FLOOR2 + 17], ['x', 7.75, 24, ARM.x1], ['y', .3, 25, ARM.y1]];
 // The planning and kanban boards hang on the arm's wall upstairs, this much higher than a wall's usual board height
 const BOARD_Z = FLOOR2 - 4;
 // ---------- Time of day ----------
@@ -1079,7 +1160,7 @@ const BOARD_Z = FLOOR2 - 4;
 // A break preview shows its own time of day (lunch at noon, after hours in the evening). Worked out once a second, not every frame.
 const SKY = [[0,'#121a33'],[5.5,'#1a2446'],[6.5,'#f2b48c'],[8,'#8fcdf0'],[16.5,'#8fcdf0'],[18,'#f0956a'],[19,'#3b3562'],[20,'#121a33'],[24,'#121a33']];
 const mix = (a, b, t) => { const A = rgbaOf(a), B = rgbaOf(b); return `rgb(${[0, 1, 2].map(i => Math.round(A[i] + (B[i] - A[i]) * t)).join(',')})`; };
-let sun = {h: 12, light: 1, warm: 0, sky: '#8fcdf0'}, sunAt = -1;
+let sun = {h: 12, light: 1, warm: 0, sky: '#8fcdf0'}, sunAt = -1, sunWindowKey = '';
 function updateSun(){
   const d = new Date(), preview = {lunch: (LUNCH.start + LUNCH.end) / 120, coffee: (COFFEE.start + COFFEE.end) / 120, night: 21}[breakSetting];
   const h = preview || d.getHours() + d.getMinutes() / 60;
@@ -1089,6 +1170,8 @@ function updateSun(){
   const warm = h >= 5.6 && h < 8 ? 1 - Math.abs(h - 6.8) / 1.2 : h >= 16.5 && h < 19.5 ? 1 - Math.abs(h - 18) / 1.5 : 0;
   const sky = mix(c0, c1, (h - h0) / (h1 - h0));
   sun = {h, light, warm: Math.max(0, warm), sky: P.night ? mix(sky, '#0a0d0c', .4) : sky};
+  const windowKey = `${Math.floor(h * 4)}|${P.night}`;
+  if (windowKey !== sunWindowKey) { sunWindowKey = windowKey; sceneryFor = null; }
   // dusk and night dim the room to blue, sunrise and sunset warm it (the tint layer over the canvas)
   const tint = {'--vig': P.night ? 'rgba(0,0,0,.45)' : 'rgba(0,0,0,.18)', '--dim': `rgba(18,26,64,${P.night ? 0 : ((1 - light) * .2).toFixed(3)})`, '--warm': `rgba(255,150,70,${(sun.warm * .06).toFixed(3)})`};
   Object.entries(tint).forEach(([k, v]) => { if (tintEl.style.getPropertyValue(k) !== v) tintEl.style.setProperty(k, v); });
@@ -1222,6 +1305,7 @@ function drawDesk(w){
   const x = w.gx, dy = w.dy, dw = w.dw, c = x + dw / 2;
   const on = w === lead ? (atDesk(lead) && lead.mode !== 'idle') : (w.state === 'working');
   baked('desk|' + w.id, () => deskBase(w));
+  if (w.empty) { faceY(dy + .30, c - .6, c + .6, 11.4, 18.2, P.screenOff); return; }
   faceY(dy + .30, c - .6, c + .6, 11.4, 18.2, on ? '#0f1a24' : '#2b5d8a');
   if (on) screen(w, c, dy);
   else { // idle: monitor stays on, showing a desktop with icons and a taskbar in the person's color
@@ -1253,10 +1337,21 @@ function deskBase(w){
   box(x + dw - .17, dy + .08, 0, .13, .98, 7.8, P.deskTop, side, dark);
   box(x, dy, 7.8, dw, 1.1, 1.2, P.deskTop, shade(P.deskTop, .9), shade(P.desk, .8));
   ctx.globalAlpha = .35; faceY(dy + 1.101, x, x + dw, 8.75, 9, '#ffffff'); ctx.globalAlpha = 1;
+  // A slim monitor housing, its power light, and a tidy dock make each station read as a real workstation.
   box3(c - .15, dy + .25, 9, .3, .2, 2, '#3a3f4a');
   box3(c - .7, dy + .15, 10.6, 1.4, .14, 8.4, '#3a3f4a');
+  faceY(dy + .297, c - .69, c + .69, 10.65, 18.95, '#263440');
+  faceY(dy + .298, c - .64, c + .64, 18.55, 18.65, '#718898');
+  faceY(dy + .298, c + .48, c + .55, 10.95, 11.14, w.color);
+  box3(c - .51, dy + .4, 9, .31, .15, .22, '#293743');
+  poly('#354854', [[c+.49,dy+.62,9.02],[c+.89,dy+.62,9.02],[c+.89,dy+1.03,9.02],[c+.49,dy+1.03,9.02]]);
   box3(c - .45, dy + .65, 9, .9, .3, .6, '#e6e8e3');
+  for (let row = 0; row < 3; row++) for (let key = 0; key < 6; key++) {
+    const kx = c - .4 + key * .14, ky = dy + .68 + row * .09;
+    poly('#91a5af', [[kx,ky,9.61],[kx+.095,ky,9.61],[kx+.095,ky+.045,9.61],[kx,ky+.045,9.61]]);
+  }
   box3(c + .55, dy + .7, 9, .2, .25, .5, '#cfd3d8');
+  faceY(dy + 1.105, x + .12, x + .34, 8.73, 8.87, w.color);
   const R = x + dw - .38;
   if (w.id === 'pm')       { box3(x + .08, dy + .3, 9, .3, .3, .5, '#ffd85e'); box3(x + .12, dy + .65, 9, .3, .3, .5, '#9be0ff'); box3(R, dy + .3, 9, .28, .28, 2.8, '#ffffff'); }
   if (w.id === 'designer') { box3(x + .06, dy + .45, 9, .45, .5, .4, '#2a2f3a'); box3(R, dy + .3, 9, .25, .25, 2.4, '#ef7a9a'); }
@@ -1384,21 +1479,20 @@ function roomEnts(ents){
 }
 
 // ---------- Coffee station ----------
-// A cabinet with a coffee machine, cups and a bowl of fruit on the open floor at the front right, for coffee runs while idle.
-// COFFEE_RUN is the way there from the walkway (where it meets the backend's path), ending in front of it.
-const STATION = {x:18.2, y:7.0, w:1.4, d:.7};
-const COFFEE_RUN = [onLane(10), {x:17.6, y:5.4}, {x:17.6, y:8.3}, {x:18.9, y:8.3}];
+// A cabinet with a coffee machine and cups in the tiled nook above the lower stair flight.
+const STATION = {x:LANDING.x1, y:2.4, w:1.45, d:.65};
+// Approach its front from the open aisle, clear of the cabinet and the stairs.
+const COFFEE_RUN = [{...HUB_EXIT}, {x:17.2, y:4.3}, {x:16.15, y:3.85}];
 function stationBase(){
   const {x, y, w, d} = STATION, wood = '#8a6440';
   box3(x, y, 0, w, d, 9, wood); box(x - .03, y - .03, 9, w + .06, d + .06, .6, '#e8e4dc', '#cfcac0', '#bdb8ae');
   faceY(y + d + .005, x + .1, x + w / 2 - .05, 1, 8, shade(wood, .85)); faceY(y + d + .005, x + w / 2 + .05, x + w - .1, 1, 8, shade(wood, .85));
-  box3(x + .1, y + .1, 9.6, .45, .4, 3.4, '#2a2f3a'); faceY(y + .505, x + .18, x + .45, 11, 12, '#5bea8c');
-  box3(x + .7, y + .2, 9.6, .16, .16, 1.1, '#ffffff'); box3(x + .9, y + .2, 9.6, .16, .16, 1.1, '#f2c14e');
-  box3(x + 1.05, y + .3, 9.6, .3, .3, .5, '#c9ced6'); box3(x + 1.1, y + .35, 10.1, .1, .1, .3, '#e0507a'); box3(x + 1.2, y + .38, 10.1, .1, .1, .3, '#f2c14e');
+  box3(x + .1, y + .1, 9.6, .45, .36, 3.4, '#2a2f3a'); faceY(y + .465, x + .18, x + .45, 11, 12, '#5bea8c');
+  box3(x + .7, y + .18, 9.6, .16, .13, 1.1, '#ffffff'); box3(x + .93, y + .18, 9.6, .16, .13, 1.1, '#f2c14e');
+  box3(x + 1.2, y + .27, 9.6, .19, .2, .5, '#c9ced6'); box3(x + 1.25, y + .3, 10.1, .08, .07, .3, '#e0507a');
 }
 // The machine puffs a little steam while someone is getting a coffee
 function drawStation(){
-  baked('station', stationBase);
   const end = COFFEE_RUN[COFFEE_RUN.length - 1];
   if (!reduce && Math.random() < .06 && workers.some(w => w.pausing && Math.abs(w.x - end.x) < .05 && Math.abs(w.y - end.y) < .05)) {
     const [sx, sy] = pj(STATION.x + .32, STATION.y + .3, 13.2); spawn(sx, sy, 'rgba(255,255,255,.6)', 'steam');
@@ -1433,8 +1527,13 @@ function drawStairs(){
   // back to front: the upper flight from the landing outwards, the half landing, then the lower flight toward the room
   STAIR_STEPS.slice().sort((a, b) => (a.x + a.w + a.y + a.d) - (b.x + b.w + b.y + b.d)).forEach(b => {
     box(b.x, b.y, 0, b.w, b.d, b.h, tread, front, side);
-    ctx.globalAlpha = .35; faceY(b.y + b.d + .005, b.x, b.x + b.w, b.h - .6, b.h, '#ffffff'); ctx.globalAlpha = 1;   // nosing
+    faceY(b.y + b.d + .006, b.x + .09, b.x + b.w - .09, b.h - 1.55, b.h - 1.32, shade(front, .72));
+    if (!b.half && b.d > 1) faceX(b.x + b.w + .006, b.y + .1, b.y + b.d - .1, b.h - 1.55, b.h - .55, shade(side, .74));
+    ctx.globalAlpha = .35; faceY(b.y + b.d + .01, b.x, b.x + b.w, b.h - .48, b.h - .22, '#ffffff'); ctx.globalAlpha = 1;
+    poly(shade(tread, .84), [[b.x + .12, b.y + b.d - .13, b.h + .008], [b.x + b.w - .12, b.y + b.d - .13, b.h + .008], [b.x + b.w - .12, b.y + b.d - .09, b.h + .008], [b.x + .12, b.y + b.d - .09, b.h + .008]]);
   });
+  // Place the cabinet behind the lower handrail, while keeping its base on the tiled floor.
+  stationBase();
   for (let y = ST.y1; y < ST.yb - .01; y += .5) stairRail(y, y + .5, stairRailZ.lower(y), stairRailZ.lower(y + .5), false);
   box3(ST.xm - .02, ST.yb - .1, 0, .12, .12, stairRailZ.lower(ST.yb) + .9, P.timber);
 }
@@ -1467,6 +1566,12 @@ function drawSofaSeat(){
   box3(3.6, 3.65, 0, .25, 1.1, 7, P.sofa);
   box3(3.85, 3.7, 0, 3.4, .8, 4.5, P.sofa);
   box3(7.25, 3.65, 0, .25, 1.1, 7, P.sofa);
+  // Separate upholstered cushions and two small pillows soften the otherwise solid sofa.
+  [3.95,5.05,6.15].forEach(x => box(x,3.78,4.5,1.02,.63,.48,shade(P.sofa,1.24),shade(P.sofa,.96),shade(P.sofa,.82)));
+  box3(4.12,4.2,4.98,.55,.18,2.0,'#e5bd77');
+  box3(6.45,4.2,4.98,.55,.18,2.0,'#c89b93');
+  poly('#d4b080', [[6.55,3.78,5.02],[7.1,3.78,5.02],[7.1,4.36,5.02],[6.55,4.36,5.02]]);
+  faceY(4.37,6.55,7.1,3.4,5.02,'#c49a70');
 }
 function drawSofaBack(){ box3(3.85, 4.45, 0, 3.4, .3, 11, P.sofa); box3(4.0, 4.4, 9.5, .6, .15, 2.5, '#f2c14e'); }
 function drawBeanBag(x, y, col){ box3(x - .35, y - .3, 0, .7, .65, 2.5, col); box3(x - .25, y - .2, 2.5, .5, .45, .8, shade(col, 1.1)); box3(x - .3, y + .2, 2.5, .6, .15, 3.2, shade(col, .95)); }
@@ -1506,6 +1611,10 @@ function drawPerson(p){
   const [fx, fy] = pj(p.x, p.y, p.z);
   ctx.fillStyle = P.shadow; ctx.beginPath(); ctx.ellipse(fx, fy, 7, 2.8, 0, 0, Math.PI * 2); ctx.fill();
   const walking = !p.seated, standing = p.spot && p.spot.stand;
+  if (p.seated && !standing) {
+    // A narrow shadow on the cushion grounds the hips without changing the sprite or its pose.
+    ctx.beginPath(); ctx.ellipse(x, y + .65, 5.1, 1.45, 0, 0, Math.PI * 2); ctx.fill();
+  }
   const walk = walking && !p.pausing && !reduce ? Math.floor(p.phase / 12 * WALK_FRAMES) % WALK_FRAMES : -1;
   // hands raised: typing, gaming, playing foosball or eating, as a 4-step loop
   let arms = -1;
@@ -1632,13 +1741,13 @@ const MAX_STROLLERS = 2;
 let nextStrollAt = performance.now() + 8000;
 const strollers = () => workers.filter(w => w.state === 'stroll').length;
 function stroll(p){
-  const pick = Math.random(), others = workers.filter(o => o !== p);
+  const pick = Math.random(), others = workers.filter(o => o !== p && atDesk(o));
   let there, wait, text;
   if (pick < .45) { there = COFFEE_RUN.map(s => ({...s})); wait = {wait: 5 + Math.random() * 4, face: 'up', say: '☕'}; text = 'Getting a coffee'; }
-  else if (pick < .8) {
+  else if (pick < .8 && others.length) {
     const o = others[Math.floor(Math.random() * others.length)];
-    there = [laneOf(o)]; wait = {wait: 3 + Math.random() * 3, face: o.frontRow ? 'down' : 'up', say: '💬'}; text = 'Chatting with ' + o.name;
-  } else { there = [onLane(-2 + Math.random() * 10)]; wait = {wait: 2.5 + Math.random() * 2, face: 'up', say: Math.random() < .5 ? '🙆' : '🤔'}; text = 'Stretching their legs'; }
+    there = copy(o.exit).reverse().slice(1); wait = {wait: 3 + Math.random() * 3, face: 'up', say: '💬'}; text = 'Chatting with ' + o.name;
+  } else { there = [onLane(8.2 + Math.random() * 1.8)]; wait = {wait: 2.5 + Math.random() * 2, face: 'up', say: Math.random() < .5 ? '🙆' : '🤔'}; text = 'Stretching their legs'; }
   startPath(p, toLane(p).concat(there, [wait], there.slice(0, -1).reverse().map(s => ({...s})), fromLane(p)));
   p.state = 'stroll'; p.status.textContent = text;
   p.onArrive = () => { p.state = 'idle'; p.idleFor = 0; p.status.textContent = 'Idle at desk'; };
@@ -1791,13 +1900,13 @@ function render(){
   at(LDX, 0, FLOOR2 - 6, drawTVScreen);
   const plant = (x, y, big, z = 0) => () => at(0, 0, z, () => baked('plant|' + x + '|' + y, () => drawPlant(x, y, big)));
   // downstairs: desks and chairs, the bookshelf in the manager's room, the coffee station, the stairs
-  everyone.forEach(w => {
+  officeDesks.forEach(w => {
     const s = {seatX:w.seatX, seatY:w.seatY, face:'up'}, k = w.seatX + w.seatY;
     ents.push({k: w.gx + w.dw / 2 + w.dy + .55, f: () => drawDesk(w)});
     ents.push({k: k - .2, f: () => baked('seat|' + w.id, () => drawChairSeat(s))});
     ents.push({k: k + .45, f: () => baked('back|' + w.id, () => drawChairBack(s))});
   });
-  ents.push({k: 1.7 + 14.5, f: () => at(0, 14.5, 0, () => baked('shelf', drawShelf))}, {k: STATION.x + STATION.w + STATION.y + STATION.d - .2, f: drawStation});
+  ents.push({k: 1.7 + 14.5, f: () => at(0, 14.5, 0, () => baked('shelf', drawShelf))}, {k: STATION.x + STATION.w / 2 + STATION.y + STATION.d, f: drawStation});
   stairEnts(ents);
   roomEnts(ents);
   // upstairs: the lounge (the TV group is drawn at its own spot and moved by LDX, so it keeps that depth plus the move)
@@ -1914,15 +2023,34 @@ let busy = false;
 function setBusy(b){ busy = b; demoBtn.disabled = b; }
 const roleOf = id => workers.find(w => w.id === id) || workers.find(w => w.id === 'backend');
 
-// When you send a prompt, the manager walks out of the manager's room to whoever got it (or to the task board when nobody
-// matched yet), briefs them for a moment, then walks back to his desk. He stays put in a meeting or away from his desk.
+// When you send a prompt, the manager uses the room door and a direct line when furniture permits.
+// Otherwise the nearest clear aisle leads to the teammate. The return retraces the same route.
 let briefTarget = null, briefTimer = 0;
+function clearBriefLine(a, b){
+  const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * 12);
+  for (let i = 1; i <= steps; i++) {
+    const x = a.x + (b.x - a.x) * i / steps, y = a.y + (b.y - a.y) * i / steps;
+    if (x < 0 || y < 0 || x > COLS || y > ROWS || x + y > CUT) return false;
+    if (officeDesks.some(d => d !== lead && x > d.gx - .1 && x < d.gx + d.dw + .1
+      && y > d.dy - .1 && y < d.dy + 1.2)) return false;
+  }
+  return true;
+}
+function briefingPath(w){
+  const aisleY = w ? w.exit[0].y : BACK_AISLE;
+  const outbound = copy(lead.exit.slice(0, 3));
+  const door = outbound[outbound.length - 1], target = w ? {...w.exit[0]} : {x:10, y:aisleY};
+  if (w && clearBriefLine(door, target)) outbound.push(target);
+  else outbound.push({x:5, y:aisleY}, target);
+  const back = outbound.slice(0, -1).reverse();
+  return outbound.concat(
+    [{wait:1.8, face:'up', say: w ? 'Briefing to ' + w.name : 'Adding it to the task board'}],
+    back, [{x:lead.seatX, y:lead.seatY, desk:true}]);
+}
 function briefTeam(w){
   if (!atDesk(lead) || lead.mode === 'meeting' || lead.state === 'briefing' || reduce) return;
-  // to the walkway beside their desk (or the middle of the walkway for the task board), a moment there, then back
-  const there = w ? laneOf(w) : onLane(0), face = w && w.frontRow ? 'down' : 'up';
   lead.state = 'briefing'; lead.briefing = w ? w.name : 'the task board';
-  startPath(lead, toLane(lead).concat([there, {wait:1.8, face, say: w ? 'Briefing to ' + w.name : 'Adding it to the task board'}], fromLane(lead)));
+  startPath(lead, briefingPath(w));
   lead.toDesk = true;
   lead.onArrive = () => { lead.state = 'idle'; lead.briefing = null; };
 }
@@ -2171,6 +2299,15 @@ demoBtn.addEventListener('click', async () => {
 });
 
 setBusy(false);
+// The isolated visual test checks desk clearance without exposing live tasks or personal settings.
+if (location.port === '4399') window.__officeRouteAudit = () => ({
+  cols:COLS, rows:ROWS, cut:CUT, station:{...STATION}, stairs:{...ST}, seats:{...SEATS},
+  desks:officeDesks.map(w => ({id:w.id, gx:w.gx, dw:w.dw, dy:w.dy, seatX:w.seatX, seatY:w.seatY})),
+  exits:everyone.map(p => ({id:p.id, seatX:p.seatX, seatY:p.seatY, exit:copy(p.exit)})),
+  briefs:workers.map(w => ({id:w.id, approach:{...w.exit[0]}, path:briefingPath(w).filter(s => Number.isFinite(s.x) && Number.isFinite(s.y))})),
+  coffee:copy(COFFEE_RUN), stairEntry:[{...HUB_EXIT}, ...copy(STAIR_PATH.slice(0, 2))],
+  manager:{seatX:lead.seatX, seatY:lead.seatY}
+});
 })();
 </script>
 </body>

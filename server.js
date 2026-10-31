@@ -4,7 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { exec, execFileSync } = require('child_process');
+const { exec, execFile, execFileSync } = require('child_process');
 const config = require('./config');
 const vscodeCodex = require('./app/vscode-codex');
 const installation = require('./app/manage-installation').createManager({ root: __dirname });
@@ -327,6 +327,7 @@ function installedHere() {
 }
 function setupData() {
   return {
+    version: require('./package.json').version,
     config: publicConfig(),
     roles: config.ROLES.map(r => {
       const skill = cfg.team[r.id].skill;
@@ -372,6 +373,9 @@ function saveSetup(body) {
 // ---------- HTTP ----------
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
   // Only requests addressed to this laptop itself. Stops "DNS rebinding", where a website points its own domain at
   // 127.0.0.1 to read or change the office through the visitor's browser.
   if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/i.test(req.headers.host || '')) { res.writeHead(403); return res.end('Forbidden'); }
@@ -469,18 +473,19 @@ const server = http.createServer((req, res) => {
     return fail(404, 'Unknown action.');
   }
   if (req.method === 'POST' && url === '/setup/open-extension' && req.headers['x-office'] === 'setup') {
-    exec('explorer.exe "' + path.join(__dirname, 'extension') + '"');
+    execFile('explorer.exe', [path.join(__dirname, 'extension')], { windowsHide: true }, () => {});
     res.writeHead(204); return res.end();
   }
   const zipName = req.method === 'GET' && /^\/skills\/([a-z0-9][a-z0-9-]{0,63})\.zip$/.exec(url);
   if (zipName) {
     const z = config.skillZip(zipName[1]);
     if (!z) { res.writeHead(404); return res.end('No such skill'); }
-    res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="' + zipName[1] + '.zip"' });
+    res.writeHead(200, { 'Content-Type': 'application/zip', 'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="' + zipName[1] + '.zip"' });
     return res.end(z);
   }
   // Saving settings changes files on this laptop, so like /shutdown it needs a header only the office's own pages send
   if (req.method === 'POST' && url === '/setup' && req.headers['x-office'] === 'setup') {
+    if (!/^application\/json(?:\s*;|\s*$)/i.test(req.headers['content-type'] || '')) { res.writeHead(415); return res.end(); }
     let body = '';
     req.on('data', c => { body += c; if (body.length > 2e6) req.destroy(); });
     req.on('end', () => {

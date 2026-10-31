@@ -1,6 +1,6 @@
 {
   "name": "claude-office",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Virtual office: a pixel office that comes alive while Claude Code, Codex, claude.ai and ChatGPT work",
   "scripts": {
