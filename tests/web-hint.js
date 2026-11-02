@@ -58,7 +58,8 @@ async function stop(server){ try { await fetch(OFFICE + '/shutdown', { method: '
     await call('Page.navigate', { url: OFFICE + '/health' }); await wait(500);
     // A message box and Send button like ChatGPT's; the page itself sends on Enter or on the button, recording what it sent.
     // chrome.runtime is stubbed: hint requests go to the isolated office, other events are recorded.
-    const source = fs.readFileSync(path.join(root, 'extension', 'content.js'), 'utf8').replace('SITES[location.hostname]', "SITES['chatgpt.com']");
+    const contentSource = fs.readFileSync(path.join(root, 'extension', 'content.js'), 'utf8');
+    const source = contentSource.replace('SITES[location.hostname]', "SITES['chatgpt.com']");
     await evaluate(`(() => {
       document.body.innerHTML = '<form><div id="prompt-textarea" contenteditable="true" style="min-height:40px"></div><button type="button" data-testid="send-button">Send</button></form>';
       window.sent = []; window.events = [];
@@ -95,6 +96,33 @@ async function stop(server){ try { await fetch(OFFICE + '/shutdown', { method: '
     sent = await evaluate('window.sent');
     assert.equal(sent.length, 3, 'sent once with the button: ' + JSON.stringify(sent));
     assert.match(sent[2], /^write the user stories for the login .*office-pm/, 'button send gets the hint: ' + sent[2]);
+
+    // Claude's editor uses ProseMirror and a labelled Send button. Check that this path sends once.
+    await call('Page.navigate', { url: OFFICE + '/health' }); await wait(500);
+    await evaluate(`(() => {
+      document.body.innerHTML = '<form><div class="ProseMirror" contenteditable="true" style="min-height:40px"></div><button type="button" aria-label="Send message">Send</button></form>';
+      window.sent = []; window.events = [];
+      const box = document.querySelector('.ProseMirror');
+      const send = () => { window.sent.push(box.innerText.trim()); box.innerHTML = ''; };
+      document.querySelector('button').addEventListener('click', send);
+      box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.defaultPrevented) { e.preventDefault(); send(); } });
+      window.chrome = { runtime: { id: 'test', getManifest: () => ({ version: 'test' }),
+        sendMessage(msg, cb) {
+          if (msg.hint) fetch('/hint', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: msg.prompt }) })
+            .then(r => r.status === 200 ? r.json() : {}).then(d => cb && cb({ hint: d.hint || null }));
+          else { window.events.push(msg); cb && cb({ ok: true }); }
+        } } };
+      return true;
+    })()`);
+    await evaluate(contentSource.replace('SITES[location.hostname]', "SITES['claude.ai']") + ';true');
+    await evaluate(`(() => { const box = document.querySelector('.ProseMirror'); box.focus(); document.execCommand('insertText', false, 'please check the security of the login'); return true; })()`);
+    await wait(700);
+    await evaluate(`(() => { document.querySelector('button[aria-label="Send message"]').click(); return true; })()`);
+    await wait(500);
+    sent = await evaluate('window.sent');
+    assert.equal(sent.length, 1, 'Claude button sends once: ' + JSON.stringify(sent));
+    assert.ok(sent[0].includes(hint), 'Claude button adds the hint: ' + sent[0]);
+    assert.equal((await evaluate('window.events')).filter(e => e.hook_event_name === 'UserPromptSubmit').length, 1, 'Claude prompt is reported once');
 
     console.log('Web skill hint: OK');
   } catch (err) {
