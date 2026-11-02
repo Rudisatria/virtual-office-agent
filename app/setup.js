@@ -18,8 +18,12 @@ const step = (label, fn) => {
 };
 
 fs.mkdirSync(DATA, { recursive: true });
+let previous = {};
+try { previous = JSON.parse(fs.readFileSync(path.join(DATA, 'install.json'), 'utf8')); } catch {}
 const built = step('Screensaver and "Show office and lock" built', () => node('app/build-screensaver.js', '--name', NAME));
-const saver = built && screensaver && step('The office is your screensaver now', () => node('app/screensaver-config.js', 'set', path.join(APP, 'app', NAME + '.scr')));
+const saver = screensaver && (built
+  ? step('The office is your screensaver now', () => node('app/screensaver-config.js', 'set', path.join(APP, 'app', NAME + '.scr')))
+  : !!previous.screensaver && fs.existsSync(path.join(APP, 'app', NAME + '.scr')));
 step('Shortcuts on the desktop and in the Start menu', () => node('app/install-shortcut.js', '--name', NAME, ...(startup ? ['--startup'] : [])));
 step("Listed in Windows' Settings → Apps, so it can be uninstalled there", () => {
   const key = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VirtualOffice';

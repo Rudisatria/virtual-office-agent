@@ -48,13 +48,15 @@ static class Setup
             {
                 say("Stopping the office and replacing the old version (your settings and skills are kept)…");
                 StopOffice();
-                DeleteWithRetry(AppDir);
+                try { DeleteWithRetry(AppDir); }
+                catch (IOException) { say("A file is still in use; updating the app files in place…"); }
+                catch (UnauthorizedAccessException) { say("A file is protected; updating the app files in place…"); }
             }
             say("Unpacking the office and Node.js…");
             Directory.CreateDirectory(AppDir);
             using (Stream s = typeof(Setup).Assembly.GetManifestResourceStream("payload.zip"))
             using (ZipArchive zip = new ZipArchive(s, ZipArchiveMode.Read))
-                zip.ExtractToDirectory(AppDir);
+                ExtractAppFiles(zip);
             File.Copy(Application.ExecutablePath, Path.Combine(AppDir, "Uninstall.exe"), true);
             say("Setting up…");
             int code = RunNode(Path.Combine("app", "setup.js"), (useSaver ? "--screensaver " : "") + (atStartup ? "--startup " : "") + (noStart ? "--no-start" : ""), say);
@@ -156,6 +158,21 @@ static class Setup
         {
             try { Directory.Delete(dir, true); return; }
             catch { if (i >= 10) throw; Thread.Sleep(500); }
+        }
+    }
+
+    // The active Windows screensaver can keep its .scr file locked during an update. The directory delete may
+    // already have removed some files, so always overwrite the full audited payload after that attempt.
+    static void ExtractAppFiles(ZipArchive zip)
+    {
+        string root = Path.GetFullPath(AppDir) + Path.DirectorySeparatorChar;
+        foreach (ZipArchiveEntry entry in zip.Entries)
+        {
+            string dest = Path.GetFullPath(Path.Combine(AppDir, entry.FullName.Replace('/', Path.DirectorySeparatorChar)));
+            if (!dest.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new IOException("Invalid installer entry");
+            if (entry.FullName.EndsWith("/")) { Directory.CreateDirectory(dest); continue; }
+            Directory.CreateDirectory(Path.GetDirectoryName(dest));
+            entry.ExtractToFile(dest, true);
         }
     }
 
