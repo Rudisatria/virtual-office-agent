@@ -414,9 +414,16 @@ function paintPerson(G, p, pose){
   rect(13, 48 + oy, 27, 49 + oy, c);
   if (back) { rect(15, 37 + oy, 27, 37 + oy, k); rect(26, 40 + oy, 27, 47 + oy, c); }
   else { rect(21, 39 + oy, 21, 49 + oy, c); rect(25, 40 + oy, 28, 43 + oy, c); rect(25, 40 + oy, 28, 40 + oy, k); }
+  if (p.outfit === 'jacket') {
+    rect(13, 39 + oy, 16, 49 + oy, c); rect(26, 39 + oy, 29, 49 + oy, c);
+    if (!back) { rect(19, 36 + oy, 23, 49 + oy, Wt); rect(17, 37 + oy, 19, 43 + oy, k); rect(23, 37 + oy, 25, 43 + oy, k); }
+  } else if (p.outfit === 'hoodie') {
+    rect(13, 46 + oy, 29, 50 + oy, c); rect(16, 47 + oy, 26, 48 + oy, C);
+    if (!back) { rect(17, 35 + oy, 25, 37 + oy, c); rect(18, 38 + oy, 18, 44 + oy, Wt); rect(24, 38 + oy, 24, 44 + oy, Wt); }
+  }
   rect(10, 51 + oy, 32, 53 + oy, '#2a2b33'); if (!back) rect(19, 51 + oy, 23, 53 + oy, '#c9ced6');
   rect(17, 30 + oy, 25, 34 + oy, s);   // neck
-  if (!back) { // collar
+  if (!back && p.outfit !== 'hoodie') { // collar
     for (let i = 0; i < 3; i++) { rect(16 + i, 34 + oy + i, 19, 34 + oy + i, Wt); rect(23, 34 + oy + i, 26 - i, 34 + oy + i, Wt); }
   }
 
@@ -491,18 +498,24 @@ function paintPerson(G, p, pose){
     rect(4, 11 + hy, 7, 24 + hy, H); rect(35, 11 + hy, 38, 24 + hy, h);
     for (let x = 11; x <= 17; x++) put(x, 3 + hy + (x < 14 ? 1 : 0), hi);
   }
+  if (!back && p.gender === 'man' && !short) { rect(11 + fx, 26 + hy, 31 + fx, 28 + hy, Sk); rect(14 + fx, 29 + hy, 28 + fx, 29 + hy, s); }
+  if (p.hairStyle === 'long') {
+    if (back) { rect(7, 26 + hy, 35, 41 + oy, H); rect(30, 26 + hy, 35, 41 + oy, h); for (let x = 8; x <= 34; x += 3) put(x, 42 + oy, h); }
+    else { rect(3, 12 + hy, 8, 40 + oy, H); rect(34, 12 + hy, 39, 40 + oy, h); }
+  }
   if (!back) {
     if (pose.sleep) { rect(13 + fx, 21 + hy, 17 + fx, 21 + hy, E); rect(25 + fx, 21 + hy, 29 + fx, 21 + hy, E); }
     else {
       rect(14 + fx, 18 + hy, 16 + fx, 22 + hy, E); rect(26 + fx, 18 + hy, 28 + fx, 22 + hy, E);
       put(14 + fx, 18 + hy, Wt); put(26 + fx, 18 + hy, Wt);
     }
-    // eyebrows (thicker on a short cut), and rosy cheeks on everyone else
-    rect(13 + fx, 15 + hy, 17 + fx, short ? 16 + hy : 15 + hy, h); rect(25 + fx, 15 + hy, 29 + fx, short ? 16 + hy : 15 + hy, h);
-    if (!short) { rect(10 + fx, 24 + hy, 12 + fx, 25 + hy, '#ec9a8c'); rect(30 + fx, 24 + hy, 32 + fx, 25 + hy, '#ec9a8c'); }
+    // eyebrows and cheeks follow the chosen character, independently of hair length
+    rect(13 + fx, 15 + hy, 17 + fx, p.gender === 'man' || short ? 16 + hy : 15 + hy, h); rect(25 + fx, 15 + hy, 29 + fx, p.gender === 'man' || short ? 16 + hy : 15 + hy, h);
+    if (p.gender !== 'man' && !short) { rect(10 + fx, 24 + hy, 12 + fx, 25 + hy, '#ec9a8c'); rect(30 + fx, 24 + hy, 32 + fx, 25 + hy, '#ec9a8c'); }
     put(19 + fx, 26 + hy, '#9a4a46'); rect(20 + fx, 27 + hy, 22 + fx, 27 + hy, '#9a4a46'); put(23 + fx, 26 + hy, '#9a4a46');
   }
-  ACC[p.id] && ACC[p.id](G, {back, fx, hy, oy, C, c, k, A: p.color, a: shade(p.color, .7), H, h, Sk, Wt});
+  const accessory = p.id === 'manager' ? 'manager' : p.accessory;
+  ACC[accessory] && ACC[accessory](G, {back, fx, hy, oy, C, c, k, A: p.color, a: shade(p.color, .7), H, h, Sk, Wt});
 }
 
 // What makes each person recognizable, painted over the figure
@@ -513,44 +526,43 @@ const ACC = {
     for (let y = 34; y <= 42; y++) { const half = Math.max(0, Math.round((42 - y) / 2)); G.rect(21 - half, y + o.oy, 21 + half, y + o.oy, o.Wt); }
     G.rect(20, 35 + o.oy, 22, 47 + o.oy, '#c8423a'); G.rect(21, 47 + o.oy, 21, 48 + o.oy, '#c8423a'); G.rect(20, 35 + o.oy, 22, 36 + o.oy, '#a8323f');
   },
-  // long hair and an ID badge
-  pm: (G, o) => {
-    if (o.back) { G.rect(7, 26 + o.hy, 35, 41 + o.oy, o.H); G.rect(30, 26 + o.hy, 35, 41 + o.oy, o.h); for (let x = 8; x <= 34; x += 3) G.put(x, 42 + o.oy, o.h); return; }
-    G.rect(3, 12 + o.hy, 8, 40 + o.oy, o.H); G.rect(34, 12 + o.hy, 39, 40 + o.oy, o.h);
+  // ID badge
+  badge: (G, o) => {
+    if (o.back) return;
     G.rect(14, 34 + o.oy, 14, 41 + o.oy, '#22252c'); G.rect(12, 42 + o.oy, 17, 48 + o.oy, o.Wt); G.rect(12, 42 + o.oy, 17, 43 + o.oy, o.A);
   },
   // a beret, tipped to one side
-  designer: (G, o) => {
+  beret: (G, o) => {
     G.ell(23, 5 + o.hy, 18, 5.5, '#a8323f'); G.ell(23, 4 + o.hy, 15, 3.5, '#c4404e'); G.rect(22, -1 + o.hy, 23, 0 + o.hy, '#a8323f');
   },
   // round glasses
-  frontend: (G, o) => {
+  glasses: (G, o) => {
     if (o.back) { G.rect(2, 19 + o.hy, 4, 19 + o.hy, '#22252c'); G.rect(38, 19 + o.hy, 40, 19 + o.hy, '#22252c'); return; }
     const ring = cx => { for (let a = 0; a < 24; a++) { const t = a / 24 * Math.PI * 2; G.put(cx + Math.cos(t) * 4.5, 20 + o.hy + Math.sin(t) * 4, '#22252c'); } };
     ring(15 + o.fx); ring(27 + o.fx); G.rect(19 + o.fx, 19 + o.hy, 23 + o.fx, 19 + o.hy, '#22252c');
     G.rect(6, 19 + o.hy, 10 + o.fx, 19 + o.hy, '#22252c'); G.rect(32 + o.fx, 19 + o.hy, 36, 19 + o.hy, '#22252c');
   },
   // headphones
-  backend: (G, o) => {
+  headphones: (G, o) => {
     G.ell(21, 14 + o.hy, 19.5, 14.5, '#22252c', (x, y) => y <= 15 + o.hy && ((x - 21) / 19.5) ** 2 + ((y - 14 - o.hy) / 14.5) ** 2 >= .78);
     [[0, 7], [35, 42]].forEach(([x0, x1]) => { G.rect(x0, 13 + o.hy, x1, 25 + o.hy, '#22252c'); G.rect(x0 + 1, 14 + o.hy, x1 - 1, 24 + o.hy, o.A); G.rect(x0 + 2, 15 + o.hy, x0 + 3, 18 + o.hy, o.k || o.A); });
   },
   // a cap with a brim
-  qa: (G, o) => {
+  cap: (G, o) => {
     G.ell(21, 10 + o.hy, 18, 10, o.A, (x, y) => y <= 12 + o.hy); G.ell(21, 10 + o.hy, 18, 10, o.a, (x, y) => y <= 12 + o.hy && rim(21, 10 + o.hy, 18, 10)(x, y));
     G.rect(20, 0 + o.hy, 22, 1 + o.hy, o.a);
     if (o.back) G.rect(15, 12 + o.hy, 27, 13 + o.hy, o.a);
     else G.ell(21 + o.fx, 13 + o.hy, 19, 3, o.a, (x, y) => y >= 12 + o.hy);
   },
   // a beanie with a folded rim and a pompom
-  devops: (G, o) => {
+  beanie: (G, o) => {
     G.ell(21, 11 + o.hy, 18, 11, o.A, (x, y) => y <= 12 + o.hy);
     for (let x = 8; x <= 34; x += 4) G.rect(x, 2 + o.hy, x, 11 + o.hy, o.a);
     G.rect(3, 11 + o.hy, 39, 15 + o.hy, '#f1f1ec'); for (let x = 4; x <= 38; x += 3) G.rect(x, 12 + o.hy, x, 14 + o.hy, '#cfd3d8');
     G.ell(21, 0 + o.hy, 3.2, 3, '#f1f1ec');
   },
   // a dark hood up and a gold badge
-  security: (G, o) => {
+  hood: (G, o) => {
     const N = '#1f2a44', n = '#16203a';
     if (o.back) { G.ell(21, 16 + o.hy, 20, 17, N); G.ell(21, 16 + o.hy, 20, 17, n, rim(21, 16 + o.hy, 20, 17)); G.rect(11, 30 + o.hy, 31, 38 + o.oy, N); return; }
     G.ell(21, 16 + o.hy, 20, 17, N, (x, y) => ((x - 21 - o.fx) / 14) ** 2 + ((y - 19 - o.hy) / 11.5) ** 2 > 1 || y < 12 + o.hy);
@@ -574,19 +586,19 @@ function sprite(p, face, walk, seated, arms, sleep, turn){
 
 // ---------- Team ----------
 const TEAM = [
-  {id:'pm', tool:'product_manager', name:'Product Manager', color:'#7c4fd6', hair:'#2b1d14', skin:'#e8b88e', gx:1.6,
+  {id:'pm', tool:'product_manager', name:'Product Manager', color:'#7c4fd6', hair:'#2b1d14', skin:'#e8b88e', gender:'woman', hairStyle:'long', outfit:'shirt', accessory:'badge', gx:1.6,
    desc:'Product Manager: requirements, user stories, acceptance criteria, scope and priorities. Pass the real document in `work`. Returns when done.'},
-  {id:'designer', tool:'designer', name:'Designer', color:'#d8920f', hair:'#5a2e1a', skin:'#f1c6a0', gx:4.1,
+  {id:'designer', tool:'designer', name:'Designer', color:'#d8920f', hair:'#5a2e1a', skin:'#f1c6a0', gender:'woman', hairStyle:'classic', outfit:'shirt', accessory:'beret', gx:4.1,
    desc:'Designer: user flow, wireframes, layout, colors, typography, UX copy. Pass the real design spec or wireframe in `work`. Returns when done.'},
-  {id:'frontend', tool:'frontend_engineer', name:'Frontend', color:'#e0507a', hair:'#3a2a1c', skin:'#e0ac80', gx:6.6,
+  {id:'frontend', tool:'frontend_engineer', name:'Frontend', color:'#e0507a', hair:'#3a2a1c', skin:'#e0ac80', gender:'woman', hairStyle:'classic', outfit:'shirt', accessory:'glasses', gx:6.6,
    desc:'Frontend engineer: UI, components, styling, client-side logic. Pass the real code in `work`. Returns when done.'},
-  {id:'backend', tool:'backend_engineer', name:'Backend', color:'#3f6fd8', hair:'#161616', skin:'#c48a5e', gx:9.1,
+  {id:'backend', tool:'backend_engineer', name:'Backend', color:'#3f6fd8', hair:'#161616', skin:'#c48a5e', gender:'woman', hairStyle:'classic', outfit:'shirt', accessory:'headphones', gx:9.1,
    desc:'Backend engineer: APIs, server logic, database, auth, integrations. Pass the real code or SQL in `work`. Returns when done.'},
-  {id:'qa', tool:'qa_tester', name:'QA', color:'#1fa3a3', hair:'#3a2a1c', skin:'#f1c6a0', gx:3.2,
+  {id:'qa', tool:'qa_tester', name:'QA', color:'#1fa3a3', hair:'#3a2a1c', skin:'#f1c6a0', gender:'woman', hairStyle:'classic', outfit:'shirt', accessory:'cap', gx:3.2,
    desc:'QA tester: test plan, test cases, edge cases, regression checks, bug reports with steps to reproduce. Pass the real tests or findings in `work`. Returns when done.'},
-  {id:'security', tool:'it_security', name:'IT Security', color:'#c8423a', hair:'#2b2b2b', skin:'#d9a37a', gx:11.6,
+  {id:'security', tool:'it_security', name:'IT Security', color:'#c8423a', hair:'#2b2b2b', skin:'#d9a37a', gender:'woman', hairStyle:'classic', outfit:'shirt', accessory:'hood', gx:11.6,
    desc:'IT Security: threat review, access control, data protection and privacy (UU PDP), secure config, findings with fixes. Pass the real review in `work`. Returns when done.'},
-  {id:'devops', tool:'devops_engineer', name:'DevOps', color:'#2f9e74', hair:'#1f1a16', skin:'#d6a07a', gx:4.6,
+  {id:'devops', tool:'devops_engineer', name:'DevOps', color:'#2f9e74', hair:'#1f1a16', skin:'#d6a07a', gender:'woman', hairStyle:'classic', outfit:'shirt', accessory:'beanie', gx:4.6,
    desc:'DevOps engineer: CI/CD pipelines, deployments, Docker, cloud infrastructure, monitoring. Pass the real config or runbook in `work`. Returns when done.'}
 ];
 // Three parallel desk rows. Smaller workstations and rugs keep a visible tiled aisle between rows.
@@ -657,7 +669,7 @@ function person(m, extra){
 }
 const workers = TEAM.map(m => person(m, deskOf(m.id)));
 workers.forEach((w, i) => w.stagger = i * .7);
-const lead = person({id:'manager', name:'Manager', label:'Me', color:'#33415e', hair:'#2b1d14', skin:'#e0ac80', hairStyle:'short'},
+const lead = person({id:'manager', name:'Manager', label:'Me', color:'#33415e', hair:'#2b1d14', skin:'#e0ac80', gender:'man', hairStyle:'short', outfit:'shirt'},
   {...deskOf('manager'), mode:'working', presence:'available', stagger:0});
 const dot = document.createElement('span'); dot.className = 'dot'; lead.tag.prepend(dot);
 const everyone = workers.concat([lead]);
@@ -2217,6 +2229,7 @@ function applyConfig(c){
     const m = c.team[w.id]; if (!m) return;
     w.name = m.name; w.tag.textContent = m.name; w.rosterName.textContent = m.name;
     if (m.color !== w.color) { w.color = m.color; [w.tag, w.bubble, w.ava].forEach(el => el.style.setProperty('--c', m.color)); }
+    for (const key of ['gender', 'hairStyle', 'outfit', 'accessory']) if (m[key]) w[key] = m[key];
   });
   spriteCache.clear(); bakedCache.clear();
   const min = t => +t.slice(0, 2) * 60 + +t.slice(3);

@@ -1,4 +1,4 @@
-// Your office's settings: its name, your name, the team members' names, colors and skills, and office hours.
+// Your office's settings: its name, your name, the team members' names, looks and skills, and office hours.
 // Saved per person in %LOCALAPPDATA%\ClaudeOffice\config.json (~/.claude-office on Mac and Linux), never in the repo.
 // Also installs each member's skill (a SKILL.md) for Claude Code (~/.claude/skills) and Codex (~/.codex/skills),
 // and packs it as a .zip for uploading to claude.ai or ChatGPT.
@@ -24,6 +24,14 @@ const ROLES = [
   { id: 'security', title: 'IT Security',     name: 'IT Security',     color: '#c8423a', skill: 'office-security' },
   { id: 'devops',   title: 'DevOps',          name: 'DevOps',          color: '#2f9e74', skill: 'sre-devops' }
 ];
+// Match the shipped characters until someone chooses a different look in Setup.
+const LOOKS = { pm: ['woman', 'long', 'shirt', 'badge'], designer: ['woman', 'classic', 'shirt', 'beret'],
+  frontend: ['woman', 'classic', 'shirt', 'glasses'], backend: ['woman', 'classic', 'shirt', 'headphones'],
+  qa: ['woman', 'classic', 'shirt', 'cap'], security: ['woman', 'classic', 'shirt', 'hood'],
+  devops: ['woman', 'classic', 'shirt', 'beanie'] };
+const CHOICES = { gender: ['woman', 'man'], hairStyle: ['classic', 'short', 'long'],
+  outfit: ['shirt', 'jacket', 'hoodie'], accessory: ['none', 'badge', 'beret', 'glasses', 'headphones', 'cap', 'beanie', 'hood'] };
+const defaultLook = id => Object.fromEntries(['gender', 'hairStyle', 'outfit', 'accessory'].map((key, i) => [key, LOOKS[id][i]]));
 const DEFAULTS = {
   officeName: 'My Virtual Office',
   manager: 'Me',
@@ -31,7 +39,7 @@ const DEFAULTS = {
   breaks: { lunch: { start: '12:00', end: '13:00' }, coffee: { start: '15:30', end: '15:45' } },
   skillHint: true,       // tell Claude Code / Codex which member's skill fits each prompt
   webHint: false,        // add that hint to ChatGPT / claude.ai messages too, through the Chrome extension (opt-in)
-  team: Object.fromEntries(ROLES.map(r => [r.id, { name: r.name, color: r.color, skill: r.skill }]))
+  team: Object.fromEntries(ROLES.map(r => [r.id, { name: r.name, color: r.color, skill: r.skill, ...defaultLook(r.id) }]))
 };
 
 const clean = (v, max, fallback) => { const s = String(v == null ? '' : v).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max); return s || fallback; };
@@ -43,10 +51,12 @@ function normalize(c = {}) {
   const team = {};
   for (const r of ROLES) {
     const m = (c.team && c.team[r.id]) || {};
+    const look = defaultLook(r.id);
     team[r.id] = {
       name: clean(m.name, 40, r.name),
       color: /^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color.toLowerCase() : r.color,
-      skill: SKILL_NAME.test(m.skill || '') ? m.skill : r.skill
+      skill: SKILL_NAME.test(m.skill || '') ? m.skill : r.skill,
+      ...Object.fromEntries(Object.keys(CHOICES).map(key => [key, CHOICES[key].includes(m[key]) ? m[key] : look[key]]))
     };
   }
   const h = c.hours || {}, b = (c.breaks && c.breaks.coffee) || {};

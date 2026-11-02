@@ -30,8 +30,8 @@ header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
 .card > p{color:var(--muted);margin:0 0 12px;max-width:75ch}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 label{display:block;font-size:.9rem;color:var(--muted)}
-input[type=text],input[type=time],textarea{width:100%;margin-top:4px;background:#0b100e;color:var(--ink);border:1px solid #2a4536;border-radius:6px;padding:8px 10px;font:inherit}
-input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+input[type=text],input[type=time],select,textarea{width:100%;margin-top:4px;background:#0b100e;color:var(--ink);border:1px solid #2a4536;border-radius:6px;padding:8px 10px;font:inherit}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--green);outline-offset:2px}
 input:invalid{border-color:var(--bad)}
 textarea{font:13px/1.45 ui-monospace,Consolas,monospace;min-height:220px;resize:vertical}
 .team{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));gap:16px}
@@ -39,6 +39,7 @@ textarea{font:13px/1.45 ui-monospace,Consolas,monospace;min-height:220px;resize:
 .member-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .member-head h3{margin:0;font:700 1rem "Pixelify Sans",monospace}
 .member-head input[type=color]{width:34px;height:28px;border:1px solid #2a4536;border-radius:4px;background:none;padding:0;cursor:pointer}
+.appearance{margin-top:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .chip{font-size:.78rem;padding:1px 8px;border-radius:99px;border:1px solid #2a4536;color:var(--muted)}
 .chip.on{border-color:var(--green-line);color:var(--green)}
@@ -85,7 +86,7 @@ code{background:#0b100e;border:1px solid var(--line);border-radius:4px;padding:1
     <div>
       <h1>Office setup</h1>
       <p class="app-version" id="appVersion">Virtual Office version loading…</p>
-      <p class="lead">Name your office and your team, and give each team member a skill. When you send a prompt, the member it fits picks it up, and Claude Code and Codex are told to use that member's skill.</p>
+      <p class="lead">Name your office, choose how each team member looks, and give them a skill. When you send a prompt, the member it fits picks it up, and Claude Code and Codex are told to use that member's skill.</p>
     </div>
     <a href="/">← Back to the office</a>
   </header>
@@ -216,12 +217,20 @@ function memberCard(role, m){
       <label>Name <input type="text" class="name" maxlength="40" required></label>
       <label>Skill name <input type="text" class="skill" maxlength="64" required pattern="[a-z0-9][a-z0-9\\-]{0,63}" title="Lowercase letters, digits and dashes"></label>
     </div>
+    <div class="row appearance">
+      <label>Character <select class="gender"><option value="woman">Woman</option><option value="man">Man</option></select></label>
+      <label>Hair <select class="hairStyle"><option value="classic">Classic</option><option value="short">Short</option><option value="long">Long</option></select></label>
+      <label>Wardrobe <select class="outfit"><option value="shirt">Shirt</option><option value="jacket">Jacket</option><option value="hoodie">Hoodie</option></select></label>
+      <label>Accessory <select class="accessory"><option value="none">None</option><option value="badge">ID badge</option><option value="beret">Beret</option><option value="glasses">Glasses</option><option value="headphones">Headphones</option><option value="cap">Cap</option><option value="beanie">Beanie</option><option value="hood">Hood &amp; badge</option></select></label>
+    </div>
     <div class="chips"><span class="chip" data-tool="claude">Claude Code</span><span class="chip" data-tool="codex">Codex</span></div>
     <label>Skill (SKILL.md) <textarea class="text" spellcheck="false"></textarea></label>
     <div class="tools"><button type="button" class="reset">Reset to template</button><a class="btn zip" download>Download .zip</a></div>`;
   el.querySelector('h3').textContent = role.title;
   const color = el.querySelector('input[type=color]'), name = el.querySelector('.name'), skill = el.querySelector('.skill'), text = el.querySelector('.text');
   color.value = m.color; name.value = m.name; skill.value = m.skill; text.value = role.text || role.template;
+  for (const key of ['gender', 'hairStyle', 'outfit', 'accessory']) el.querySelector('.' + key).value = m[key];
+  el.querySelector('.gender').addEventListener('change', () => { el.querySelector('.hairStyle').value = el.querySelector('.gender').value === 'man' ? 'short' : 'long'; });
   color.addEventListener('input', () => el.style.setProperty('--c', color.value));
   el.querySelectorAll('.chip').forEach(c => {
     const on = role.installed[c.dataset.tool];
@@ -231,7 +240,8 @@ function memberCard(role, m){
   reset.disabled = !role.template;
   reset.addEventListener('click', () => { if (confirm('Replace this skill text with the template?')) text.value = role.template; });
   const zip = el.querySelector('.zip'); zip.href = '/skills/' + m.skill + '.zip';
-  el.read = () => ({ name: name.value, color: color.value, skill: skill.value.trim(), text: text.value });
+  el.read = () => ({ name: name.value, color: color.value, skill: skill.value.trim(), text: text.value,
+    ...Object.fromEntries(['gender', 'hairStyle', 'outfit', 'accessory'].map(key => [key, el.querySelector('.' + key).value])) });
   el.valid = () => name.value.trim() && SKILL.test(skill.value.trim());
   return el;
 }
@@ -377,7 +387,8 @@ $('form').addEventListener('submit', async e => {
   if (coffeeStart < workStart || coffeeEnd > workEnd) { $('saving').textContent = 'Keep the coffee break inside working hours.'; $('coffeeStart').focus(); return; }
   if (coffeeStart < lunchEnd && coffeeEnd > lunchStart) { $('saving').textContent = `Coffee break cannot overlap lunch (${lunchStart}–${lunchEnd}).`; $('coffeeStart').focus(); return; }
   const team = {}, skills = {};
-  cards.forEach(c => { const v = c.read(); team[c.dataset.role] = {name: v.name, color: v.color, skill: v.skill}; skills[c.dataset.role] = v.text; });
+  cards.forEach(c => { const v = c.read(); team[c.dataset.role] = {name: v.name, color: v.color, skill: v.skill,
+    gender: v.gender, hairStyle: v.hairStyle, outfit: v.outfit, accessory: v.accessory}; skills[c.dataset.role] = v.text; });
   const body = {
     config: {officeName: $('officeName').value, manager: $('manager').value, hours: {start: workStart, end: workEnd}, breaks: {lunch: {start: lunchStart, end: lunchEnd}, coffee: {start: coffeeStart, end: coffeeEnd}}, skillHint: $('hint').checked, webHint: $('webHint').checked, team},
     skills,

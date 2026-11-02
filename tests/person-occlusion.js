@@ -12,9 +12,9 @@ vm.runInContext(`
   ${between('function pixelGrid()', '// Shade on the right-hand rim')}
   ${between('function paintPerson(', 'const spriteCache =')}
   const rim=()=>()=>false;
-  function render(back, arms, act) {
+  function render(back, arms, act, look={}) {
     const grid=pixelGrid();
-    paintPerson(grid,{id:'backend',hair:'#161616',skin:'#c48a5e',color:'#3f6fd8'},
+    paintPerson(grid,{id:'backend',hair:'#161616',skin:'#c48a5e',color:'#3f6fd8',gender:'woman',hairStyle:'classic',outfit:'shirt',accessory:'none',...look},
       {back,arms,act,seated:true,walk:-1,turn:0,sleep:false});
     return grid;
   }
@@ -58,6 +58,14 @@ for (const height of [62, 75]) {
 assert.equal(tops[0], tops[1], 'seated hips moved when lower legs were drawn');
 assert.notDeepEqual(context.render(false, 0, 'eat').g, context.render(false, 0, 'game').g, 'eating and gaming use distinct poses');
 console.log('Seating OK: stable hip anchor and distinct eating/gaming poses.');
+
+const baseLook = context.render(false, -1, null).g;
+for (const look of [{gender:'man'}, {hairStyle:'short'}, {hairStyle:'long'}, {outfit:'jacket'}, {outfit:'hoodie'}, {accessory:'glasses'}]) {
+  assert.notDeepEqual(context.render(false, -1, null, look).g, baseLook, `${Object.keys(look)[0]} did not change the sprite`);
+}
+assert.notDeepEqual(context.render(true, -1, null, {accessory:'beanie'}).g,
+  context.render(true, -1, null, {accessory:'hood'}).g, 'chosen accessory is still tied to role');
+console.log('Appearance OK: character, hair, wardrobe and accessory choices change the sprite.');
 
 for (const back of [true, false]) {
   const seated = context.render(back, -1, 'eat');

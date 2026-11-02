@@ -24,6 +24,11 @@ async function getJson(url) {
 }
 
 async function main() {
+  const normalizedLook = require('../config').normalize({ team: { qa: { gender: 'robot', hairStyle: '../long', outfit: 'cape', accessory: '<script>' } } }).team.qa;
+  assert.equal(normalizedLook.gender, 'woman');
+  assert.equal(normalizedLook.hairStyle, 'classic');
+  assert.equal(normalizedLook.outfit, 'shirt');
+  assert.equal(normalizedLook.accessory, 'cap');
   for (const file of ['public/setup.html', 'public/index.html']) {
     const html = fs.readFileSync(path.join(root, file), 'utf8');
     const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
@@ -89,7 +94,8 @@ async function main() {
   assert.equal((await getJson('/setup/data')).extension.reconnectId, reconnectId);
   assert.equal((await getJson('/extension/control')).reconnectId, 0, 'acknowledged reconnect is cleared');
 
-  const config = { ...before.config, hours: { start: '08:00', end: '17:00' }, breaks: { lunch: { start: '12:30', end: '13:15' }, coffee: { start: '10:15', end: '10:35' } } };
+  const config = { ...before.config, hours: { start: '08:00', end: '17:00' }, breaks: { lunch: { start: '12:30', end: '13:15' }, coffee: { start: '10:15', end: '10:35' } },
+    team: { ...before.config.team, qa: { ...before.config.team.qa, gender: 'man', hairStyle: 'short', outfit: 'hoodie', accessory: 'glasses' } } };
   const response = await fetch(origin + '/setup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Office': 'setup' },
@@ -101,9 +107,14 @@ async function main() {
   assert.equal(saved.data.config.breaks.coffee.end, '10:35');
   assert.equal(saved.data.config.breaks.lunch.start, '12:30');
   assert.equal(saved.data.config.breaks.lunch.end, '13:15');
+  assert.equal(saved.data.config.team.qa.gender, 'man');
+  assert.equal(saved.data.config.team.qa.hairStyle, 'short');
+  assert.equal(saved.data.config.team.qa.outfit, 'hoodie');
+  assert.equal(saved.data.config.team.qa.accessory, 'glasses');
   assert.equal(saved.data.hooks.hint, true, JSON.stringify(saved.report));
   assert.equal(saved.data.codexHooks, true, JSON.stringify(saved.report));
   assert.equal((await getJson('/config')).breaks.coffee.start, '10:15');
+  assert.equal((await getJson('/config')).team.qa.accessory, 'glasses');
   assert.equal((await getJson('/setup/data')).codexHooks, true);
   console.log('Setup flow OK: extension reconnect acknowledged; lunch and coffee schedule and hooks saved.');
 }

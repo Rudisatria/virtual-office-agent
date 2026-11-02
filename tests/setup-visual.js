@@ -57,6 +57,12 @@ const server = spawn(process.execPath, ['server.js'], {
       const { viewport, page, version } = metrics.result.result.value;
       if (page > viewport) throw new Error(`${name}: horizontal overflow ${page}px > ${viewport}px`);
       if (version !== `Virtual Office v${require('../package.json').version}`) throw new Error(`${name}: wrong version label: ${version}`);
+      const looks = await call('Runtime.evaluate', { expression: '({members:document.querySelectorAll(".member").length,gender:document.querySelector(".member .gender").value,hair:document.querySelector(".member .hairStyle").value,accessory:document.querySelector(".member .accessory").value})', returnByValue: true });
+      if (looks.result.result.value.members !== 7 || looks.result.result.value.gender !== 'woman' || looks.result.result.value.hair !== 'long' || looks.result.result.value.accessory !== 'badge') throw new Error(`${name}: appearance controls did not load`);
+      await call('Runtime.evaluate', { expression: 'document.querySelector(".member").scrollIntoView({block:"start"})' });
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const teamShot = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+      fs.writeFileSync(path.join(root, 'dist', `setup-team-${name}.png`), Buffer.from(teamShot.result.data, 'base64'));
       console.log(`${name}: ${viewport}px viewport, ${page}px page; ${output}`);
       if (name === 'mobile') {
         await call('Runtime.evaluate', { expression: 'document.querySelector("#form").requestSubmit()' });

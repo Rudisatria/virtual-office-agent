@@ -10,7 +10,7 @@ The characters visualize activity; they are not separate AI agents. The role ski
 
 - Isometric office with animated characters, role-specific screens, break activities, and a 30 fps cap.
 - Local activity history with request wording masked.
-- Setup for office name, team names and colors, hours, skills, and connections.
+- Setup for office name, team names and colors, character appearance, hours, skills, and connections. Each team member can choose a woman or man character, hair, a shirt/jacket/hoodie, and one accessory. Appearance choices do not change AI behavior.
 - Claude Code and Codex hooks, plus an optional Chrome extension for ChatGPT and claude.ai.
 - Windows installer built from tracked source files; Node.js is bundled in the installer.
 
