@@ -29,6 +29,10 @@ async function main() {
   assert.equal(normalizedLook.hairStyle, 'classic');
   assert.equal(normalizedLook.outfit, 'shirt');
   assert.equal(normalizedLook.accessory, 'cap');
+  const optional = require('../config').normalize({ team: { extra1: { added: true, active: true, keywords: 'mobile, Android' } } }).team;
+  assert.equal(optional.extra1.active, true);
+  assert.equal(optional.extra1.keywords, 'mobile, Android');
+  assert.equal(optional.extra2.active, false);
   for (const file of ['public/setup.html', 'public/index.html']) {
     const html = fs.readFileSync(path.join(root, file), 'utf8');
     const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
@@ -81,6 +85,8 @@ async function main() {
   assert.equal(before.hooks.hint, false);
   assert.equal(before.codexHooks, false);
   assert.equal(before.extension, null);
+  assert.equal(before.roles.filter(r => r.optional).length, 2);
+  assert.equal(before.config.team.extra1.active, false);
 
   const rejectedReconnect = await fetch(origin + '/setup/extension/reconnect', { method: 'POST' });
   assert.equal(rejectedReconnect.status, 404, 'reconnect requires the setup header');
@@ -94,8 +100,10 @@ async function main() {
   assert.equal((await getJson('/setup/data')).extension.reconnectId, reconnectId);
   assert.equal((await getJson('/extension/control')).reconnectId, 0, 'acknowledged reconnect is cleared');
 
-  const config = { ...before.config, hours: { start: '08:00', end: '17:00' }, breaks: { lunch: { start: '12:30', end: '13:15' }, coffee: { start: '10:15', end: '10:35' } },
-    team: { ...before.config.team, qa: { ...before.config.team.qa, gender: 'man', hairStyle: 'short', outfit: 'hoodie', accessory: 'glasses' } } };
+  const config = { ...before.config, webHint: true, hours: { start: '08:00', end: '17:00' }, breaks: { lunch: { start: '12:30', end: '13:15' }, coffee: { start: '10:15', end: '10:35' } },
+    team: { ...before.config.team, qa: { ...before.config.team.qa, gender: 'man', hairStyle: 'short', outfit: 'hoodie', accessory: 'glasses' },
+      backend: { ...before.config.team.backend, active: false },
+      extra1: { ...before.config.team.extra1, name: 'Mobile specialist', added: true, active: true, keywords: 'Android, iOS' } } };
   const response = await fetch(origin + '/setup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Office': 'setup' },
@@ -111,10 +119,18 @@ async function main() {
   assert.equal(saved.data.config.team.qa.hairStyle, 'short');
   assert.equal(saved.data.config.team.qa.outfit, 'hoodie');
   assert.equal(saved.data.config.team.qa.accessory, 'glasses');
+  assert.equal(saved.data.config.team.backend.active, false);
+  assert.equal(saved.data.config.team.extra1.active, true);
+  assert.equal(saved.data.config.team.extra1.keywords, 'Android, iOS');
   assert.equal(saved.data.hooks.hint, true, JSON.stringify(saved.report));
   assert.equal(saved.data.codexHooks, true, JSON.stringify(saved.report));
   assert.equal((await getJson('/config')).breaks.coffee.start, '10:15');
   assert.equal((await getJson('/config')).team.qa.accessory, 'glasses');
+  const customHint = await fetch(origin + '/hint', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt:'Build an Android app'}) });
+  assert.equal(customHint.status, 200);
+  assert.match((await customHint.json()).hint, /Mobile specialist/);
+  const inactiveHint = await fetch(origin + '/hint', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt:'Backend: create a database endpoint'}) });
+  assert.equal(inactiveHint.status, 204, 'inactive member does not receive hints');
   assert.equal((await getJson('/setup/data')).codexHooks, true);
   console.log('Setup flow OK: extension reconnect acknowledged; lunch and coffee schedule and hooks saved.');
 }

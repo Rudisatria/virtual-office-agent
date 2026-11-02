@@ -95,19 +95,28 @@ const PROMPT_RULES = [
   ['devops',   /devops|deploy|docker|kubernetes|\bk8s\b|\bci\b|ci\/cd|pipeline|github actions|release|\bpush\b|\bgit\b|github|vercel|netlify|\bcloud\b|\baws\b|azure|\bgcp\b|infra|infrastruktur|monitoring|uptime|hosting|domain|\bdns\b|\bssl\b|install|setup|startup|screensaver/],
   ['backend',  /backend|back-end|\bapi\b|server|database|\bdb\b|\bsql\b|endpoint|script|hook|config|\bnpm\b|node|python|integrat|integrasi/]
 ];
+const activeRoles = () => config.ROLES.filter(r => cfg.team[r.id].active);
+const activeOrManager = role => cfg.team[role] && cfg.team[role].active ? role : 'manager';
+// Custom keywords are plain text, never regular expressions supplied by Setup.
+function customRole(text) {
+  const lower = String(text || '').toLowerCase();
+  return activeRoles().find(r => r.optional && cfg.team[r.id].keywords.split(',')
+    .some(word => word.trim().length >= 3 && lower.includes(word.trim().toLowerCase())))?.id || null;
+}
 // "QA: check the login", "@Sari check the login": the prompt names a team member (role, title or their name)
 function namedRole(prompt) {
   const m = /^\s*@?([^:,\n]{1,40}?)\s*[:,]/.exec(String(prompt || '')) || /^\s*@(\S{1,40})/.exec(String(prompt || ''));
   if (!m) return null;
   const want = m[1].trim().toLowerCase();
-  const r = config.ROLES.find(r => [r.id, r.title, cfg.team[r.id].name].some(n => n.toLowerCase() === want));
+  const r = activeRoles().find(r => [r.id, r.title, cfg.team[r.id].name].some(n => n.toLowerCase() === want));
   return r ? r.id : null;
 }
 function promptRole(prompt) {
   const named = namedRole(prompt);
   if (named) return named;
   const text = String(prompt || '').toLowerCase();
-  for (const [role, re] of PROMPT_RULES) if (re.test(text)) return role;
+  const custom = customRole(text); if (custom) return custom;
+  for (const [role, re] of PROMPT_RULES) if (cfg.team[role].active && re.test(text)) return role;
   return null;
 }
 
@@ -121,13 +130,14 @@ const patchFiles = input => [...JSON.stringify(input || {}).matchAll(/\*\*\* (?:
 
 function roleFor(name, input = {}) {
   const skill = name === 'Skill' && (input.skill || input.name || input.command);
-  const owner = skill && config.ROLES.find(r => cfg.team[r.id].skill === String(skill).replace(/^\//, ''));
+  const owner = skill && activeRoles().find(r => cfg.team[r.id].skill === String(skill).replace(/^\//, ''));
   if (owner) return owner.id;
   const text = [name, input.file_path, input.path, input.notebook_path, typeof input.command === 'string' && name !== 'apply_patch' ? input.command : '',
     input.skill, input.subagent_type, input.description, input.pattern, input.url, input.query, ...(name === 'apply_patch' ? patchFiles(input) : [])]
     .filter(Boolean).join(' ').toLowerCase();
-  for (const [role, re] of RULES) if (re.test(text)) return role;
-  return FALLBACK[name] || 'backend';
+  const custom = customRole(text); if (custom) return custom;
+  for (const [role, re] of RULES) if (cfg.team[role].active && re.test(text)) return role;
+  return activeOrManager(FALLBACK[name] || 'backend');
 }
 function labelFor(name, input = {}) {
   const file = base(input.file_path || input.notebook_path || input.path);
@@ -170,10 +180,11 @@ const STEP_RULES = [
 ];
 function stepRole(text, owner) {
   const role = promptRole(text);
-  if (role || owner) return role || owner;
+  if (role) return role;
+  if (owner && cfg.team[owner]?.active) return owner;
   const t = String(text || '').toLowerCase();
-  for (const [r, re] of STEP_RULES) if (re.test(t)) return r;
-  return 'pm';
+  for (const [r, re] of STEP_RULES) if (cfg.team[r].active && re.test(t)) return r;
+  return activeOrManager('pm');
 }
 const SOURCES = { codex: 'Codex', chatgpt: 'ChatGPT', claude: 'claude.ai' };
 // Added to your prompt (Claude Code and Codex only, through the hook): which member it fits and their skill, plus the
@@ -183,7 +194,7 @@ function skillHint(ev) {
   const tool = ev.source === 'codex' ? 'codex' : ev.source ? null : 'claude';
   if (!tool) return null;
   const role = owners.get(ev.session_id);
-  const ready = config.ROLES.filter(r => config.installedIn(tool, cfg.team[r.id].skill));
+  const ready = activeRoles().filter(r => config.installedIn(tool, cfg.team[r.id].skill));
   const lead = role && ready.find(r => r.id === role);
   if (!lead) return null;
   const m = cfg.team[lead.id];
@@ -331,7 +342,7 @@ function setupData() {
     config: publicConfig(),
     roles: config.ROLES.map(r => {
       const skill = cfg.team[r.id].skill;
-      return { id: r.id, title: r.title, text: config.skillText(skill) || '', template: config.templateText(skill) || config.templateText(r.skill) || '',
+      return { id: r.id, title: r.title, optional: !!r.optional, text: config.skillText(skill) || '', template: config.templateText(skill) || config.templateText(r.skill) || '',
         installed: { claude: config.installedIn('claude', skill), codex: config.installedIn('codex', skill) } };
     }),
     tools: { claude: config.TOOLS.claude.present(), codex: config.TOOLS.codex.present() },

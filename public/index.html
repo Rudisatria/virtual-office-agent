@@ -599,7 +599,11 @@ const TEAM = [
   {id:'security', tool:'it_security', name:'IT Security', color:'#c8423a', hair:'#2b2b2b', skin:'#d9a37a', gender:'woman', hairStyle:'classic', outfit:'shirt', accessory:'hood', gx:11.6,
    desc:'IT Security: threat review, access control, data protection and privacy (UU PDP), secure config, findings with fixes. Pass the real review in `work`. Returns when done.'},
   {id:'devops', tool:'devops_engineer', name:'DevOps', color:'#2f9e74', hair:'#1f1a16', skin:'#d6a07a', gender:'woman', hairStyle:'classic', outfit:'shirt', accessory:'beanie', gx:4.6,
-   desc:'DevOps engineer: CI/CD pipelines, deployments, Docker, cloud infrastructure, monitoring. Pass the real config or runbook in `work`. Returns when done.'}
+   desc:'DevOps engineer: CI/CD pipelines, deployments, Docker, cloud infrastructure, monitoring. Pass the real config or runbook in `work`. Returns when done.'},
+  {id:'extra1', name:'Team member 8', color:'#b969a9', hair:'#2b1d14', skin:'#e0ac80', gender:'man', hairStyle:'short', outfit:'jacket', accessory:'none', active:false,
+   desc:'First custom team member. Give this person a skill and task keywords in Setup.'},
+  {id:'extra2', name:'Team member 9', color:'#98704f', hair:'#3a2a1c', skin:'#d6a07a', gender:'woman', hairStyle:'long', outfit:'hoodie', accessory:'none', active:false,
+   desc:'Second custom team member. Give this person a skill and task keywords in Setup.'}
 ];
 // Three parallel desk rows. Smaller workstations and rugs keep a visible tiled aisle between rows.
 const LANE_V = 19.8;
@@ -607,7 +611,7 @@ const onLane = u => ({x:(LANE_V + u) / 2, y:(LANE_V - u) / 2, lane:true});   // 
 const BACK_AISLE = 8.5, HUB_EXIT = onLane(8.2);
 const SEATS = {pm:[6.3, 6.95, 'back'], designer:[8.9, 6.95, 'back'], frontend:[11.5, 6.95, 'back'],
   qa:[6.3, 11, 'middle'], devops:[8.9, 11, 'middle'], backend:[11.5, 11, 'middle'],
-  security:[11.5, 15.05, 'front']};
+  security:[11.5, 15.05, 'front'], extra1:[6.3, 15.05, 'front'], extra2:[8.9, 15.05, 'front']};
 // The manager's room in the front-left corner: x 0–ROOM.x1, y ROOM.y0–ROWS. Its back is the wall under the arm, its side
 // a low wall carrying on from the arm's wall (the door in it), its front a low wall along the hall's open edge.
 const ROOM = {x1:ARM.x1, y0:ARM.y1, door:[13.3, 14.3]};
@@ -665,23 +669,22 @@ function person(m, extra){
     idleFor:0, spotFor:0, came:[], z:0, toDesk:false, ...extra};
   p.x = p.seatX; p.y = p.seatY;
   p.bubble = mkBubble(p.color); p.tag = mkTag(p.label || p.name, p.color);
+  if (m.active === false) { p.bubble.style.visibility = 'hidden'; p.tag.style.visibility = 'hidden'; }
   return p;
 }
-const workers = TEAM.map(m => person(m, deskOf(m.id)));
-workers.forEach((w, i) => w.stagger = i * .7);
+const allWorkers = TEAM.map(m => person(m, deskOf(m.id)));
+allWorkers.forEach((w, i) => { w.stagger = i * .7; w.active = w.active !== false; w.empty = !w.active; });
+const workers = allWorkers.filter(w => w.active);
 const lead = person({id:'manager', name:'Manager', label:'Me', color:'#33415e', hair:'#2b1d14', skin:'#e0ac80', gender:'man', hairStyle:'short', outfit:'shirt'},
   {...deskOf('manager'), mode:'working', presence:'available', stagger:0});
 const dot = document.createElement('span'); dot.className = 'dot'; lead.tag.prepend(dot);
 const everyone = workers.concat([lead]);
-// The workstations leave a clear tiled aisle between rows. Two front stations are unassigned.
-const emptyDesks = [[6.3, 15.05], [8.9, 15.05]].map(([seatX, seatY], i) => ({
-  id:`empty-${i}`, color:'#667780', empty:true, seatX, seatY, gx:seatX - DW / 2, dw:DW, dy:seatY - 1.5
-}));
-const officeDesks = everyone.concat(emptyDesks);
+// Every desk remains in place when its member is inactive.
+const officeDesks = allWorkers.concat([lead]);
 let planning = false, breakSetting = 'schedule', curPhase = null, lastPhase;
 
 const roster = document.getElementById('roster');
-everyone.slice().reverse().forEach((w, i) => {
+[lead].concat(allWorkers).slice().reverse().forEach((w, i) => {
   const li = document.createElement('li');
   li.innerHTML = `<div class="ava" style="--c:${w.color}"></div><div><b></b>${w === lead ? ' <span class="note" style="margin:0">You</span>' : ''}<small></small></div>`;
   li.querySelector('b').textContent = w.name; w.rosterName = li.querySelector('b'); w.ava = li.querySelector('.ava');
@@ -689,7 +692,7 @@ everyone.slice().reverse().forEach((w, i) => {
   w.status = li.querySelector('small');
 });
 // keep roster order: Manager first, then team in desk order
-roster.innerHTML = ''; [lead].concat(workers).forEach(w => roster.appendChild(w.status.closest('li')));
+roster.replaceChildren(...[lead].concat(workers).map(w => w.status.closest('li')));
 
 function say(p, text, ms){
   const t = p.bubble.querySelector('.txt'); t.textContent = text; p.bubble.classList.remove('done');
@@ -788,6 +791,44 @@ const STAIR_PATH = [onLane(10), {x:XC, y:ST.yb + .55, z:0}]
   .concat(STAIR_STEPS.map(b => ({x:b.d < 1 ? XC : b.half ? XC : b.x + b.w / 2, y:b.d < 1 ? b.y + b.d / 2 : YC, z:b.h})))
   .concat([{x:LANDING.x1 - .4, y:YC, z:FLOOR2}, {...HUB}]);
 const copy = list => list.map(s => ({...s}));
+// One cat follows the clear work aisles and the same staircase and lounge aisles as the team.
+const CAT_ROUTE = [{x:13.8,y:12.1,z:0}, {x:6.3,y:12.1,z:0}, {x:13.8,y:12.1,z:0}, {x:14,y:8.5,z:0}]
+  .concat(copy(STAIR_PATH), [[12.8,2.6],[7.4,2.6],[7.4,1.6],[3.3,1.6],[3.3,5.4],[3.9,8.3],[3.3,5.4],[3.3,1.6],[7.4,1.6],[7.4,2.6],[12.8,2.6]]
+    .map(([x,y]) => ({x,y,z:FLOOR2})), copy(STAIR_PATH.slice().reverse()), [{x:14,y:8.5,z:0}])
+  .map(p => ({...p, z:p.z ?? 0})); // the first stair approach has no height in the team's route
+const cat = {x:CAT_ROUTE[0].x, y:CAT_ROUTE[0].y, z:0, next:1, dir:1, pause:2, step:0};
+function moveCat(dt){
+  if (reduce || (cat.pause -= dt) > 0) return;
+  const target = CAT_ROUTE[cat.next], dx = target.x - cat.x, dy = target.y - cat.y, d = Math.hypot(dx,dy);
+  const speed = cat.z > 0 && cat.z < FLOOR2 ? 1.15 : 1.5;
+  if (d < .04 || speed * dt >= d) {
+    cat.x = target.x; cat.y = target.y; cat.z = target.z;
+    cat.next = (cat.next + 1) % CAT_ROUTE.length;
+    if (cat.next === 1 || cat.next === 4 + STAIR_PATH.length + 4 || cat.next === 4 + STAIR_PATH.length + 7)
+      cat.pause = 1.5 + Math.random() * 2;
+  } else {
+    cat.x += dx / d * speed * dt; cat.y += dy / d * speed * dt;
+    cat.z += (target.z - cat.z) * speed * dt / d;
+    cat.dir = dx - dy < 0 ? -1 : 1;
+    cat.step += dt * 12;
+  }
+}
+function drawCat(){
+  const [x,y] = pj(cat.x,cat.y,cat.z), moving = !reduce && cat.pause <= 0;
+  ctx.save(); ctx.translate(x,y); ctx.scale(.78,.78);
+  const rCat = (color, left, top, width, height) => r(color,left-x,top-y,width,height);
+  ctx.fillStyle = P.shadow; ctx.beginPath(); ctx.ellipse(0,0,5,1.8,0,0,Math.PI*2); ctx.fill();
+  const bob = moving ? Math.floor(cat.step) % 2 : 0, dark = '#342d29', fur = '#b88855', light = '#e9cda1';
+  // Tail, body, paws, pointed ears and one bright eye; all stay inside a small pixel grid.
+  rCat(dark,x-cat.dir*8,y-7-bob,3,2); rCat(fur,x-cat.dir*9,y-9-bob,2,3);
+  rCat(dark,x-5,y-8-bob,10,6); rCat(fur,x-4,y-8-bob,8,4); rCat(light,x-3,y-5-bob,5,1);
+  rCat(dark,x-4,y-2,2,2); rCat(dark,x+2,y-2-(moving?bob:0),2,2);
+  const hx=x+cat.dir*5;
+  rCat(dark,hx-3,y-10-bob,6,6); rCat(fur,hx-2,y-10-bob,4,4);
+  rCat(dark,hx-3,y-13-bob,2,4); rCat(dark,hx+1,y-13-bob,2,4);
+  rCat('#e8d96b',hx+cat.dir,y-8-bob,1,1); rCat(light,hx+cat.dir*3,y-6-bob,1,1);
+  ctx.restore();
+}
 const toLane = p => copy(p.exit);
 const fromLane = p => copy(p.exit.slice().reverse()).concat([{x:p.seatX, y:p.seatY, desk:true}]);
 const laneOf = p => ({...p.exit[p.exit.length - 1]});
@@ -1879,6 +1920,7 @@ function update(dt){
     }
     if (p.path.length) stepPath(p, dt);
   });
+  moveCat(dt);
   // Nothing heard for 10 minutes while work is still shown: a "finished" event was missed, so nobody stays stuck thinking
   if (!claudeBusy() && (leadKeys.size || workers.some(w => w.job && w.job.live && !w.job.endAt))) { claudeBusyAt = 0; liveClear(); }
   // Only the prompt is open, no tool running: Claude is thinking, so the prompt's owner thinks too
@@ -2011,6 +2053,8 @@ function render(){
   railEnts(ents);
   personEnts(ents);
   ents.sort((a, b) => a.k - b.k).forEach(e => e.f());
+  // The cat stays in view even when passing the staircase rail or lounge furniture.
+  drawCat();
   parts.forEach(q => {
     ctx.globalAlpha = Math.max(0, q.life);
     // steam: a soft puff that widens and fades as it rises
@@ -2106,7 +2150,7 @@ const connEl = document.getElementById('conn'), curEl = document.getElementById(
 const qEl = {value:''};
 let busy = false;
 function setBusy(b){ busy = b; demoBtn.disabled = b; }
-const roleOf = id => workers.find(w => w.id === id) || workers.find(w => w.id === 'backend');
+const roleOf = id => workers.find(w => w.id === id);
 
 // When you send a prompt, the manager uses the room door and a direct line when furniture permits.
 // Otherwise the nearest clear aisle leads to the teammate. The return retraces the same route.
@@ -2143,7 +2187,7 @@ function briefTeam(w){
 const leadKeys = new Set();
 // bubble: a short version of the label for the speech bubble (claude.ai / ChatGPT steps)
 function liveStart(role, label, key, quiet, bubble){
-  if (role === 'manager') { leadKeys.add(key); return; }
+  if (role === 'manager' || !roleOf(role)) { leadKeys.add(key); return; }
   const w = roleOf(role);
   const promptJob = String(key).startsWith('prompt:');
   if (promptJob && !quiet) { briefTarget = w; say(lead, 'Briefing to ' + w.name, 2400); }
@@ -2177,6 +2221,7 @@ function catchUp(m){
     else if (msg.type === 'session') log(msg.label, t);
     else if (msg.type === 'start' && msg.role !== 'manager') {
       const w = roleOf(msg.role), o = open.get(w);
+      if (!w) return;
       const promptJob = String(msg.key).startsWith('prompt:');
       if (o) { o.keys.add(msg.key); if (!promptJob && (!o.visible || o.label !== msg.label)) { o.label = msg.label; o.visible = true; log(`${w.name}: ${msg.label}`, t); teamLog(w, msg.label, t); } }
       else { open.set(w, {keys: new Set([msg.key]), label: msg.label, visible: !promptJob}); if (!promptJob) { log(`${w.name} picked up: ${msg.label}`, t); teamLog(w, 'picked up: ' + msg.label, t); } }
@@ -2225,12 +2270,25 @@ function applyConfig(c){
   document.title = c.officeName + ' (local)';
   lead.label = c.manager;
   lead.tag.lastChild.textContent = c.manager; lead.rosterName.textContent = c.manager;
-  workers.forEach(w => {
+  allWorkers.forEach(w => {
     const m = c.team[w.id]; if (!m) return;
     w.name = m.name; w.tag.textContent = m.name; w.rosterName.textContent = m.name;
     if (m.color !== w.color) { w.color = m.color; [w.tag, w.bubble, w.ava].forEach(el => el.style.setProperty('--c', m.color)); }
     for (const key of ['gender', 'hairStyle', 'outfit', 'accessory']) if (m[key]) w[key] = m[key];
+    if (w.active && !m.active) {
+      w.job = null; w.queue = []; w.path = []; w.state = 'idle'; w.seated = true;
+      w.x = w.seatX; w.y = w.seatY; w.z = 0; w.spot = null; w.came = []; say(w, '');
+      SPOTS.forEach(s => { if (s.who === w) s.who = null; });
+      w.stay = false; w.casual = false; w.status.textContent = 'Inactive';
+    }
+    if (!w.active && m.active) w.status.textContent = 'Idle at desk';
+    w.active = m.active; w.empty = !m.active;
+    w.tag.style.visibility = w.bubble.style.visibility = m.active ? 'visible' : 'hidden';
   });
+  workers.splice(0, workers.length, ...allWorkers.filter(w => w.active));
+  everyone.splice(0, everyone.length, ...workers, lead);
+  roster.replaceChildren(...[lead].concat(workers).map(w => w.status.closest('li')));
+  sceneryFor = null;
   spriteCache.clear(); bakedCache.clear();
   const min = t => +t.slice(0, 2) * 60 + +t.slice(3);
   HOURS = {start: min(c.hours.start), end: min(c.hours.end), startText: c.hours.start, endText: c.hours.end};
@@ -2386,12 +2444,25 @@ demoBtn.addEventListener('click', async () => {
 
 setBusy(false);
 // The isolated visual test checks desk clearance without exposing live tasks or personal settings.
+if (location.port === '4399') window.__officeApplyConfig = applyConfig;
+if (location.port === '4399') window.__officeCatCycleAudit = () => {
+  const saved = {...cat}; let upstairs = false, returned = false, finite = true;
+  for (let i = 0; i < 9000 && !returned; i++) {
+    moveCat(1 / 30);
+    finite &&= Number.isFinite(cat.x) && Number.isFinite(cat.y) && Number.isFinite(cat.z);
+    upstairs ||= cat.z >= FLOOR2 - .01;
+    returned = upstairs && cat.z === 0 && cat.next === 1;
+  }
+  Object.assign(cat, saved);
+  return {upstairs, returned, finite};
+};
 if (location.port === '4399') window.__officeRouteAudit = () => ({
   cols:COLS, rows:ROWS, cut:CUT, station:{...STATION}, stairs:{...ST}, seats:{...SEATS},
   desks:officeDesks.map(w => ({id:w.id, gx:w.gx, dw:w.dw, dy:w.dy, seatX:w.seatX, seatY:w.seatY})),
   exits:everyone.map(p => ({id:p.id, seatX:p.seatX, seatY:p.seatY, exit:copy(p.exit)})),
   briefs:workers.map(w => ({id:w.id, approach:{...w.exit[0]}, path:briefingPath(w).filter(s => Number.isFinite(s.x) && Number.isFinite(s.y))})),
   coffee:copy(COFFEE_RUN), stairEntry:[{...HUB_EXIT}, ...copy(STAIR_PATH.slice(0, 2))],
+  cat:copy(CAT_ROUTE), catPosition:{x:cat.x, y:cat.y, z:cat.z},
   manager:{seatX:lead.seatX, seatY:lead.seatY}
 });
 })();

@@ -39,7 +39,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     const state = await evaluate(`(() => {
       // the floor and walls are drawn on their own layer (#floor) under the office canvas
       const c=document.querySelector('#floor'), stage=document.querySelector('#stage').getBoundingClientRect();
-      const tags=[...document.querySelectorAll('.tag')].map(x=>({name:x.textContent,x:x.getBoundingClientRect().left,y:x.getBoundingClientRect().top}));
+      const tags=[...document.querySelectorAll('.tag')].filter(x=>getComputedStyle(x).visibility!=='hidden').map(x=>({name:x.textContent,x:x.getBoundingClientRect().left,y:x.getBoundingClientRect().top}));
       const pixel=[...c.getContext('2d').getImageData(280*c.width/576,160*c.height/350,1,1).data];
       return {title:document.querySelector('.fs-title').textContent,stage:{x:stage.x,y:stage.y,w:stage.width,h:stage.height},tags,pixel,sidebar:document.querySelector('.team').getBoundingClientRect().x};
     })()`);
@@ -93,6 +93,13 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     if (coffeeError) errors.push(coffeeError);
     const stairError = check('stair approach', audit.stairEntry);
     if (stairError) errors.push(stairError);
+    const catGround = audit.cat.slice(0, audit.cat.findIndex(p => p.z > 0));
+    const catError = check('cat route', catGround);
+    if (catError) errors.push(catError);
+    if (!audit.cat.every(p => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z))) errors.push('cat route contains an undefined coordinate');
+    if (!audit.cat.some(p => p.z >= 48) || !audit.cat.some(p => p.z === 0) || !audit.cat.some(p => p.z > 0 && p.z < 48)) errors.push('cat does not visit both floors by the stairs');
+    const catCycle = await evaluate('window.__officeCatCycleAudit()');
+    if (!catCycle.finite || !catCycle.upstairs || !catCycle.returned) errors.push('cat vanishes during a full route: ' + JSON.stringify(catCycle));
     if (Math.abs(audit.station.x - 15.4) > .01 || audit.station.x+audit.station.w > audit.stairs.xm-.5
       || audit.station.y < audit.stairs.y1 || audit.station.y+audit.station.d > 3.4)
       errors.push('coffee cabinet must touch the left landing wall and stay clear of the stairs');
@@ -101,6 +108,19 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
       || coffeeStop.y < audit.station.y+audit.station.d+.7)
       errors.push('coffee visitor overlaps the cabinet');
     if (errors.length || audit.desks.length !== 10) throw new Error('Desk spacing or walking route failed: ' + JSON.stringify(errors));
+    const extraConfig = await (await fetch('http://127.0.0.1:4399/config')).json();
+    for (const id of ['extra1', 'extra2']) { extraConfig.team[id].added = true; extraConfig.team[id].active = true; }
+    await evaluate(`window.__officeApplyConfig(${JSON.stringify(extraConfig)})`);
+    const expanded = await evaluate('window.__officeRouteAudit()');
+    for (const id of ['extra1', 'extra2']) {
+      const brief = expanded.briefs.find(b => b.id === id);
+      if (!brief) errors.push('manager has no path to ' + id);
+      else {
+        const error = check('manager to ' + id, [{x:expanded.manager.seatX,y:expanded.manager.seatY}, ...brief.path]);
+        if (error) errors.push(error);
+      }
+    }
+    if (expanded.exits.length !== 10 || errors.length) throw new Error('Added member route failed: ' + JSON.stringify(errors));
     const shot = await call('Page.captureScreenshot', { format:'png', captureBeyondViewport:false });
     fs.writeFileSync(path.join(profile, 'one-floor-restored-preview.png'), Buffer.from(shot.result.data, 'base64'));
     // The hall stands on the dark page: the frame's corners stay empty, the middle of the floor is drawn.

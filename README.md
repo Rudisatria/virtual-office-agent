@@ -1,6 +1,6 @@
 # Virtual Office
 
-Virtual Office is a local pixel-art view of AI activity on your computer. A timber hall fills the scene: seven team roles work downstairs, and the team visits the mezzanine lounge during breaks. The office reacts to Claude Code, Codex, ChatGPT, and claude.ai activity where their integrations are available.
+Virtual Office is a local pixel-art view of AI activity on your computer. A timber hall fills the scene: seven built-in team roles work downstairs, with two spare desks for custom members. The team visits the mezzanine lounge during breaks, and a cat roams both floors. The office reacts to Claude Code, Codex, ChatGPT, and claude.ai activity where their integrations are available.
 
 ![Virtual Office preview showing the isometric timber hall and team activity](docs/office-preview.png)
 
@@ -11,6 +11,7 @@ The characters visualize activity; they are not separate AI agents. The role ski
 - Isometric office with animated characters, role-specific screens, break activities, and a 30 fps cap.
 - Local activity history with request wording masked.
 - Setup for office name, team names and colors, character appearance, hours, skills, and connections. Each team member can choose a woman or man character, hair, a shirt/jacket/hoodie, and one accessory. Appearance choices do not change AI behavior.
+- Add up to two custom members to the spare desks, give them task keywords and a skill, and turn any member Active or inactive. Inactive members keep their settings but do not appear in office activity or receive routing hints.
 - Claude Code and Codex hooks, plus an optional Chrome extension for ChatGPT and claude.ai.
 - Windows installer built from tracked source files; Node.js is bundled in the installer.
 

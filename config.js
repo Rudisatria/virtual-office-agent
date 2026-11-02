@@ -14,7 +14,7 @@ const HOME = process.env.OFFICE_HOME || os.homedir();   // where ~/.claude and ~
 const REPO_SKILLS = path.join(__dirname, 'skills');
 const MY_SKILLS = path.join(DATA, 'skills');             // your edited copies of the skills
 
-// The seven team roles are fixed (the office has a desk for each); names, colors and skills are yours to change
+// Seven built-in roles and two optional desks; names, colors and skills are yours to change.
 const ROLES = [
   { id: 'pm',       title: 'Product Manager', name: 'Product Manager', color: '#7c4fd6', skill: 'office-pm' },
   { id: 'designer', title: 'Designer',        name: 'Designer',        color: '#d8920f', skill: 'office-designer' },
@@ -22,13 +22,16 @@ const ROLES = [
   { id: 'backend',  title: 'Backend',         name: 'Backend',         color: '#3f6fd8', skill: 'office-backend' },
   { id: 'qa',       title: 'QA',              name: 'QA',              color: '#1fa3a3', skill: 'office-qa' },
   { id: 'security', title: 'IT Security',     name: 'IT Security',     color: '#c8423a', skill: 'office-security' },
-  { id: 'devops',   title: 'DevOps',          name: 'DevOps',          color: '#2f9e74', skill: 'sre-devops' }
+  { id: 'devops',   title: 'DevOps',          name: 'DevOps',          color: '#2f9e74', skill: 'sre-devops' },
+  { id: 'extra1',   title: 'Custom member 1', name: 'Team member 8',  color: '#b969a9', skill: 'office-custom-1', optional: true },
+  { id: 'extra2',   title: 'Custom member 2', name: 'Team member 9',  color: '#98704f', skill: 'office-custom-2', optional: true }
 ];
 // Match the shipped characters until someone chooses a different look in Setup.
 const LOOKS = { pm: ['woman', 'long', 'shirt', 'badge'], designer: ['woman', 'classic', 'shirt', 'beret'],
   frontend: ['woman', 'classic', 'shirt', 'glasses'], backend: ['woman', 'classic', 'shirt', 'headphones'],
   qa: ['woman', 'classic', 'shirt', 'cap'], security: ['woman', 'classic', 'shirt', 'hood'],
-  devops: ['woman', 'classic', 'shirt', 'beanie'] };
+  devops: ['woman', 'classic', 'shirt', 'beanie'], extra1: ['man', 'short', 'jacket', 'none'],
+  extra2: ['woman', 'long', 'hoodie', 'none'] };
 const CHOICES = { gender: ['woman', 'man'], hairStyle: ['classic', 'short', 'long'],
   outfit: ['shirt', 'jacket', 'hoodie'], accessory: ['none', 'badge', 'beret', 'glasses', 'headphones', 'cap', 'beanie', 'hood'] };
 const defaultLook = id => Object.fromEntries(['gender', 'hairStyle', 'outfit', 'accessory'].map((key, i) => [key, LOOKS[id][i]]));
@@ -39,7 +42,8 @@ const DEFAULTS = {
   breaks: { lunch: { start: '12:00', end: '13:00' }, coffee: { start: '15:30', end: '15:45' } },
   skillHint: true,       // tell Claude Code / Codex which member's skill fits each prompt
   webHint: false,        // add that hint to ChatGPT / claude.ai messages too, through the Chrome extension (opt-in)
-  team: Object.fromEntries(ROLES.map(r => [r.id, { name: r.name, color: r.color, skill: r.skill, ...defaultLook(r.id) }]))
+  team: Object.fromEntries(ROLES.map(r => [r.id, { name: r.name, color: r.color, skill: r.skill, ...defaultLook(r.id),
+    active: !r.optional, ...(r.optional ? {added:false, keywords:''} : {}) }]))
 };
 
 const clean = (v, max, fallback) => { const s = String(v == null ? '' : v).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max); return s || fallback; };
@@ -56,7 +60,9 @@ function normalize(c = {}) {
       name: clean(m.name, 40, r.name),
       color: /^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color.toLowerCase() : r.color,
       skill: SKILL_NAME.test(m.skill || '') ? m.skill : r.skill,
-      ...Object.fromEntries(Object.keys(CHOICES).map(key => [key, CHOICES[key].includes(m[key]) ? m[key] : look[key]]))
+      ...Object.fromEntries(Object.keys(CHOICES).map(key => [key, CHOICES[key].includes(m[key]) ? m[key] : look[key]])),
+      active: r.optional ? m.added === true && m.active === true : m.active !== false,
+      ...(r.optional ? {added:m.added === true, keywords:clean(m.keywords, 120, '')} : {})
     };
   }
   const h = c.hours || {}, b = (c.breaks && c.breaks.coffee) || {};
@@ -128,6 +134,7 @@ function installSkills(cfg, tools) {
   for (const tool of tools) {
     if (!TOOLS[tool].present()) { report.push({ tool, skipped: TOOLS[tool].label + ' is not on this laptop' }); continue; }
     for (const r of ROLES) {
+      if (!cfg.team[r.id].active) continue;
       const name = cfg.team[r.id].skill, text = skillText(name);
       if (!text) { report.push({ tool, name, note: 'no text for this skill, so the existing one is used as is' }); continue; }
       const dir = path.join(TOOLS[tool].dir(), name), file = path.join(dir, 'SKILL.md');

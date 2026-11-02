@@ -39,6 +39,8 @@ textarea{font:13px/1.45 ui-monospace,Consolas,monospace;min-height:220px;resize:
 .member-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .member-head h3{margin:0;font:700 1rem "Pixelify Sans",monospace}
 .member-head input[type=color]{width:34px;height:28px;border:1px solid #2a4536;border-radius:4px;background:none;padding:0;cursor:pointer}
+.member-active{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--ink)}
+.member-active input{accent-color:var(--green)}
 .appearance{margin-top:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .chip{font-size:.78rem;padding:1px 8px;border-radius:99px;border:1px solid #2a4536;color:var(--muted)}
@@ -145,7 +147,8 @@ code{background:#0b100e;border:1px solid var(--line);border-radius:4px;padding:1
 
     <section class="card">
       <h2>Team</h2>
-      <p>Seven desks, seven roles. Change their names and colors, and edit what each one's skill tells the AI to do. The <b>description</b> at the top of a skill is how the AI decides when to use it, so keep it specific and include the words you use in prompts. To give a prompt to someone directly, start it with their name or role, like <code>QA: check the login</code>.</p>
+      <p>Seven built-in roles and two spare desks. Turn a member off to keep their settings while removing them from the office and routing. Custom members use their task keywords or an explicit name, such as <code>@Team member 8: check this</code>.</p>
+      <p><button type="button" id="addMember">Add member (2 desks free)</button></p>
       <div class="team" id="team"></div>
     </section>
 
@@ -212,7 +215,7 @@ function memberCard(role, m){
   const el = document.createElement('div');
   el.className = 'member'; el.style.setProperty('--c', m.color);
   el.innerHTML = `
-    <div class="member-head"><input type="color" aria-label="Color"><h3></h3></div>
+    <div class="member-head"><input type="color" aria-label="Color"><h3></h3><label class="member-active"><input type="checkbox" class="active"> Active</label></div>
     <div class="row">
       <label>Name <input type="text" class="name" maxlength="40" required></label>
       <label>Skill name <input type="text" class="skill" maxlength="64" required pattern="[a-z0-9][a-z0-9\\-]{0,63}" title="Lowercase letters, digits and dashes"></label>
@@ -223,12 +226,19 @@ function memberCard(role, m){
       <label>Wardrobe <select class="outfit"><option value="shirt">Shirt</option><option value="jacket">Jacket</option><option value="hoodie">Hoodie</option></select></label>
       <label>Accessory <select class="accessory"><option value="none">None</option><option value="badge">ID badge</option><option value="beret">Beret</option><option value="glasses">Glasses</option><option value="headphones">Headphones</option><option value="cap">Cap</option><option value="beanie">Beanie</option><option value="hood">Hood &amp; badge</option></select></label>
     </div>
+    <label class="keyword-wrap" hidden>Task keywords (custom member; separate with commas) <input type="text" class="keywords" maxlength="120" placeholder="e.g. mobile app, Android, iOS"></label>
     <div class="chips"><span class="chip" data-tool="claude">Claude Code</span><span class="chip" data-tool="codex">Codex</span></div>
     <label>Skill (SKILL.md) <textarea class="text" spellcheck="false"></textarea></label>
     <div class="tools"><button type="button" class="reset">Reset to template</button><a class="btn zip" download>Download .zip</a></div>`;
   el.querySelector('h3').textContent = role.title;
   const color = el.querySelector('input[type=color]'), name = el.querySelector('.name'), skill = el.querySelector('.skill'), text = el.querySelector('.text');
   color.value = m.color; name.value = m.name; skill.value = m.skill; text.value = role.text || role.template;
+  el.querySelector('.active').checked = m.active;
+  el.querySelector('.keywords').value = m.keywords || '';
+  el.querySelector('.keyword-wrap').hidden = !role.optional;
+  el.dataset.optional = role.optional ? 'true' : 'false';
+  el.dataset.added = role.optional && m.added ? 'true' : 'false';
+  el.hidden = !!role.optional && !m.added;
   for (const key of ['gender', 'hairStyle', 'outfit', 'accessory']) el.querySelector('.' + key).value = m[key];
   el.querySelector('.gender').addEventListener('change', () => { el.querySelector('.hairStyle').value = el.querySelector('.gender').value === 'man' ? 'short' : 'long'; });
   color.addEventListener('input', () => el.style.setProperty('--c', color.value));
@@ -241,6 +251,7 @@ function memberCard(role, m){
   reset.addEventListener('click', () => { if (confirm('Replace this skill text with the template?')) text.value = role.template; });
   const zip = el.querySelector('.zip'); zip.href = '/skills/' + m.skill + '.zip';
   el.read = () => ({ name: name.value, color: color.value, skill: skill.value.trim(), text: text.value,
+    active: el.querySelector('.active').checked, added: el.dataset.added === 'true', keywords: el.querySelector('.keywords').value,
     ...Object.fromEntries(['gender', 'hairStyle', 'outfit', 'accessory'].map(key => [key, el.querySelector('.' + key).value])) });
   el.valid = () => name.value.trim() && SKILL.test(skill.value.trim());
   return el;
@@ -258,6 +269,7 @@ function render(d){
   $('coffeeEnd').value = c.breaks?.coffee?.end || '15:45';
   const team = $('team'); team.innerHTML = '';
   d.roles.forEach(r => { const card = memberCard(r, c.team[r.id]); card.dataset.role = r.id; team.appendChild(card); });
+  updateAddMember();
   $('iClaude').checked = d.tools.claude; $('iClaude').disabled = !d.tools.claude;
   if (!d.tools.claude) $('iClaudeNote').textContent = 'Claude Code was not found on this laptop (no ~/.claude folder).';
   $('iCodex').checked = d.tools.codex; $('iCodex').disabled = !d.tools.codex;
@@ -276,6 +288,18 @@ function render(d){
   }
   renderStatus(d);
 }
+
+function updateAddMember(){
+  const free = [...document.querySelectorAll('.member[data-optional="true"]')].filter(c => c.dataset.added !== 'true').length;
+  $('addMember').disabled = free === 0;
+  $('addMember').textContent = free ? `Add member (${free} desk${free === 1 ? '' : 's'} free)` : 'All desks assigned';
+}
+$('addMember').addEventListener('click', () => {
+  const card = [...document.querySelectorAll('.member[data-optional="true"]')].find(c => c.dataset.added !== 'true');
+  if (!card) return;
+  card.dataset.added = 'true'; card.hidden = false; card.querySelector('.active').checked = true;
+  updateAddMember(); card.scrollIntoView({block:'center'}); card.querySelector('.name').focus();
+});
 
 $('selectUpdate').addEventListener('click', async () => {
   $('selectUpdate').disabled = true;
@@ -388,7 +412,8 @@ $('form').addEventListener('submit', async e => {
   if (coffeeStart < lunchEnd && coffeeEnd > lunchStart) { $('saving').textContent = `Coffee break cannot overlap lunch (${lunchStart}–${lunchEnd}).`; $('coffeeStart').focus(); return; }
   const team = {}, skills = {};
   cards.forEach(c => { const v = c.read(); team[c.dataset.role] = {name: v.name, color: v.color, skill: v.skill,
-    gender: v.gender, hairStyle: v.hairStyle, outfit: v.outfit, accessory: v.accessory}; skills[c.dataset.role] = v.text; });
+    gender: v.gender, hairStyle: v.hairStyle, outfit: v.outfit, accessory: v.accessory,
+    active: v.active, ...(c.dataset.optional === 'true' ? {added:v.added, keywords:v.keywords} : {})}; skills[c.dataset.role] = v.text; });
   const body = {
     config: {officeName: $('officeName').value, manager: $('manager').value, hours: {start: workStart, end: workEnd}, breaks: {lunch: {start: lunchStart, end: lunchEnd}, coffee: {start: coffeeStart, end: coffeeEnd}}, skillHint: $('hint').checked, webHint: $('webHint').checked, team},
     skills,
